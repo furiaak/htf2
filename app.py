@@ -7,7 +7,18 @@ import os
 
 app = Flask(__name__)
 app.secret_key = 'dev-secret-key-12345'
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///inventory.db'
+import os
+
+# Use PostgreSQL for both dev and prod
+database_url = os.environ.get('DATABASE_URL')
+if not database_url:
+    # Local development - adjust password if yours is different
+    database_url = 'postgresql://postgres:010107@localhost:5432/inventory_dev'
+
+if database_url.startswith('postgres://'):
+    database_url = database_url.replace('postgres://', 'postgresql://', 1)
+
+app.config['SQLALCHEMY_DATABASE_URI'] = database_url
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db = SQLAlchemy(app)

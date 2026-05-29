@@ -1,0 +1,135 @@
+{% extends "base.html" %}
+{% from "_item_table.html" import item_table %}
+
+{% block content %}
+<div class="header">
+    <h1>Create Move Request</h1>
+    <div class="subtitle">Request stock for {{ warehouse.name }}</div>
+</div>
+
+<div class="container">
+    {% with messages = get_flashed_messages() %}
+        {% if messages %}
+            {% for message in messages %}
+                <div class="flash">{{ message }}</div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <form method="GET" id="warehouseSelectForm">
+        <div class="form-group">
+            <label>Request From (Warehouse)</label>
+            <select name="from_warehouse_id" onchange="this.form.submit()">
+                <option value="">Select Warehouse</option>
+                {% for wh in warehouses %}
+                <option value="{{ wh.id }}" {% if selected_warehouse_id == wh.id %}selected{% endif %}>
+                    {{ wh.name }} ({{ wh.store_code }})
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+    </form>
+    
+    <form method="POST">
+        <input type="hidden" name="from_warehouse_id" value="{{ selected_warehouse_id }}">
+        
+        <div class="form-group">
+            <label>Request Date</label>
+            <input type="date" name="date" value="{{ today }}" required>
+        </div>
+        
+        <div class="form-group">
+            <label>Request Type</label>
+            <select name="movement_type" onchange="updateMovementType(this.value)" required>
+                <option value="transfer" {% if movement_type == 'transfer' %}selected{% endif %}>Pindahan</option>
+                <option value="production" {% if movement_type == 'production' %}selected{% endif %}>Produksi</option>
+                <option value="vip" {% if movement_type == 'vip' %}selected{% endif %}>VIP/Donasi</option>
+                <option value="adjustment" {% if movement_type == 'adjustment' %}selected{% endif %}>Adjustment</option>
+            </select>
+        </div>
+        
+        {% if ingredients %}
+            {{ item_table(ingredients, qty_label='Requested', show_unit_select=true, readonly=false) }}
+        {% elif selected_warehouse_id %}
+            <div class="no-stock-message">
+                ⚠️ No items available in this warehouse
+            </div>
+        {% else %}
+            <div class="no-stock-message">
+                Please select a warehouse above
+            </div>
+        {% endif %}
+        
+        <div class="form-group">
+            <label>Note (optional)</label>
+            <textarea name="note" rows="2" placeholder="catatan"></textarea>
+        </div>
+        
+        {% if ingredients %}
+        <button type="submit" class="btn">SUBMIT REQUEST</button>
+        {% endif %}
+    </form>
+</div>
+
+<style>
+.form-group {
+    margin-bottom: 16px;
+}
+
+.form-group label {
+    display: block;
+    font-size: 14px;
+    font-weight: 500;
+    margin-bottom: 6px;
+    color: #333;
+}
+
+.form-group input, .form-group select, .form-group textarea {
+    width: 100%;
+    padding: 12px;
+    font-size: 16px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    font-family: inherit;
+}
+
+.btn {
+    width: 100%;
+    padding: 14px;
+    font-size: 16px;
+    font-weight: 600;
+    border: none;
+    border-radius: 10px;
+    background: #007aff;
+    color: white;
+    cursor: pointer;
+    margin-top: 8px;
+}
+
+.flash {
+    background: #4caf50;
+    color: white;
+    padding: 12px;
+    border-radius: 8px;
+    margin-bottom: 16px;
+    text-align: center;
+}
+
+.no-stock-message {
+    text-align: center;
+    padding: 40px;
+    color: #999;
+    background: white;
+    border-radius: 12px;
+    margin: 16px 0;
+}
+</style>
+
+<script>
+function updateMovementType(value) {
+    const urlParams = new URLSearchParams(window.location.search);
+    urlParams.set('movement_type', value);
+    window.location.href = window.location.pathname + '?' + urlParams.toString();
+}
+</script>
+{% endblock %}

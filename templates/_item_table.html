@@ -1,0 +1,111 @@
+{% macro item_table(items, qty_label, show_unit_select=true, readonly=false) %}
+<div class="item-table">
+    <div class="item-table-header">
+        <div>Item</div>
+        <div>Stock</div>
+        {% if show_unit_select %}<div>Unit</div>{% endif %}
+        <div>{{ qty_label }}</div>
+    </div>
+    
+    {% for item in items %}
+    <div class="item-row" data-ingredient-id="{{ item.id }}">
+        <div class="item-name">{{ item.name }}</div>
+        <div class="item-stock">{{ item.display_stock }}</div>
+        {% if show_unit_select %}
+        <div class="item-unit">
+            <select name="unit_{{ item.id }}" class="unit-select">
+                {% for unit in item.units %}
+                <option value="{{ unit.id }}" {% if unit.id == item.default_unit_id %}selected{% endif %}>
+                    {{ unit.alt_unit }}
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+        {% endif %}
+        <div class="item-qty">
+            <input type="number" 
+                   name="qty_{{ item.id }}" 
+                   class="qty-input" 
+                   step="1" 
+                   placeholder="0"
+                   {% if readonly %}readonly{% endif %}>
+        </div>
+    </div>
+    {% endfor %}
+    
+    <div class="add-item-link">
+        <a href="#" onclick="addNewIngredientRow(event)">+ Add new ingredient</a>
+    </div>
+</div>
+
+<style>
+.item-table {
+    background: white;
+    border-radius: 12px;
+    overflow: hidden;
+    margin: 16px 0;
+}
+
+.item-table-header {
+    display: grid;
+    grid-template-columns: 1fr 70px {% if show_unit_select %}80px{% endif %} 80px;
+    gap: 8px;
+    padding: 12px;
+    background: #f9f9f9;
+    font-weight: 600;
+    font-size: 13px;
+    border-bottom: 1px solid #e0e0e0;
+}
+
+.item-row {
+    display: grid;
+    grid-template-columns: 1fr 70px {% if show_unit_select %}80px{% endif %} 80px;
+    gap: 8px;
+    padding: 12px;
+    border-bottom: 1px solid #eee;
+    align-items: center;
+}
+
+.item-name {
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.item-stock {
+    font-size: 13px;
+    color: #666;
+    font-family: monospace;
+}
+
+.unit-select, .qty-input {
+    width: 100%;
+    padding: 8px;
+    font-size: 14px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+}
+
+.qty-input {
+    text-align: right;
+}
+
+.add-item-link {
+    padding: 12px;
+    text-align: center;
+    border-top: 1px solid #eee;
+}
+
+.add-item-link a {
+    color: #007aff;
+    text-decoration: none;
+    font-size: 14px;
+}
+</style>
+
+<script>
+function addNewIngredientRow(event) {
+    event.preventDefault();
+    alert('Add new ingredient - will implement in Phase 2');
+}
+</script>
+{% endmacro %}

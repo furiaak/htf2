@@ -1,0 +1,177 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="header">
+    <h1>Fulfill Move Request #{{ move_request.id }}</h1>
+    <div class="subtitle">From: {{ move_request.from_warehouse.name }} → To: {{ move_request.to_warehouse.name }}</div>
+    <div class="subtitle">Type: {{ move_request.movement_type|capitalize }}</div>
+</div>
+
+<div class="container">
+    {% with messages = get_flashed_messages() %}
+        {% if messages %}
+            {% for message in messages %}
+                <div class="flash">{{ message }}</div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <form method="POST">
+        <div class="form-group">
+            <label>Fulfillment Date</label>
+            <input type="date" name="date" value="{{ today }}" required>
+        </div>
+        
+        <div class="item-table">
+            <div class="item-table-header">
+                <div>Item</div>
+                <div>Requested</div>
+                <div>Unit</div>
+                <div>Actual Qty</div>
+            </div>
+            
+            {% for item in request_items %}
+            <div class="item-row">
+                <div class="item-name">{{ item.ingredient.name }}</div>
+                <div class="item-requested">{{ item.quantity_requested|int }} {{ item.unit.alt_unit }}</div>
+                <div class="item-unit">
+                    <select name="unit_{{ item.ingredient_id }}" class="unit-select">
+                        {% for unit in item.ingredient.units|sort(attribute='rank', reverse=True) %}
+                        <option value="{{ unit.id }}" 
+                            data-conversion="{{ unit.conversion_to_base }}"
+                            {% if unit.id == item.unit_id %}selected{% endif %}
+                            {% if move_request.movement_type == 'transfer' and unit.rank == loop.revindex0 + 1 %}selected{% endif %}
+                            {% if move_request.movement_type != 'transfer' and unit.rank == 1 %}selected{% endif %}>
+                            {{ unit.alt_unit }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="item-qty">
+                    <input type="number" 
+                           name="qty_{{ item.ingredient_id }}" 
+                           class="qty-input" 
+                           step="1" 
+                           value="{{ item.quantity_requested|int }}"
+                           placeholder="0">
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        
+        <div class="form-group">
+            <label>Fulfillment Note (optional)</label>
+            <textarea name="note" rows="2" placeholder="e.g., Short by 1 carton, will send later"></textarea>
+        </div>
+        
+        <button type="submit" class="btn">CONFIRM FULFILLMENT</button>
+        <a href="{{ url_for('pending_move_requests') }}" class="btn-secondary">BACK</a>
+    </form>
+</div>
+
+<style>
+.form-group {
+    margin-bottom: 16px;
+}
+
+.form-group label {
+    display: block;
+    font-size: 14px;
+    font-weight: 500;
+    margin-bottom: 6px;
+    color: #333;
+}
+
+.form-group input, .form-group select, .form-group textarea {
+    width: 100%;
+    padding: 12px;
+    font-size: 16px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    font-family: inherit;
+}
+
+.item-table {
+    background: white;
+    border-radius: 12px;
+    overflow: hidden;
+    margin: 16px 0;
+}
+
+.item-table-header {
+    display: grid;
+    grid-template-columns: 1fr 80px 80px 80px;
+    gap: 8px;
+    padding: 12px;
+    background: #f9f9f9;
+    font-weight: 600;
+    font-size: 13px;
+    border-bottom: 1px solid #e0e0e0;
+}
+
+.item-row {
+    display: grid;
+    grid-template-columns: 1fr 80px 80px 80px;
+    gap: 8px;
+    padding: 12px;
+    border-bottom: 1px solid #eee;
+    align-items: center;
+}
+
+.item-name {
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.item-requested {
+    font-size: 13px;
+    color: #666;
+}
+
+.unit-select, .qty-input {
+    width: 100%;
+    padding: 8px;
+    font-size: 14px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+}
+
+.qty-input {
+    text-align: right;
+}
+
+.btn {
+    width: 100%;
+    padding: 14px;
+    font-size: 16px;
+    font-weight: 600;
+    border: none;
+    border-radius: 10px;
+    background: #4caf50;
+    color: white;
+    cursor: pointer;
+    margin-top: 8px;
+}
+
+.btn-secondary {
+    display: block;
+    text-align: center;
+    background: #6c757d;
+    color: white;
+    padding: 14px;
+    border-radius: 10px;
+    font-weight: 600;
+    text-decoration: none;
+    margin-top: 8px;
+}
+
+.flash {
+    background: #4caf50;
+    color: white;
+    padding: 12px;
+    border-radius: 8px;
+    margin-bottom: 16px;
+    text-align: center;
+}
+</style>
+{% endblock %}

@@ -1,0 +1,161 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="header">
+    <h1>Pending Move Requests</h1>
+    <div class="subtitle">Requests awaiting fulfillment</div>
+</div>
+
+<div class="container">
+    {% with messages = get_flashed_messages() %}
+        {% if messages %}
+            {% for message in messages %}
+                <div class="flash">{{ message }}</div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    {% if requests %}
+        {% for req in requests %}
+        <div class="request-card">
+            <div class="request-header">
+                <span class="request-id">Move Request #{{ req.id }}</span>
+                <span class="request-date">{{ req.request_date.strftime('%Y-%m-%d') }}</span>
+            </div>
+            <div class="request-detail">
+                From: {{ req.from_warehouse.name }}<br>
+                To: {{ req.to_warehouse.name }}<br>
+                Requested by: {{ req.requested_by.full_name }}
+            </div>
+            <div class="request-items">
+                {% for item in req.items %}
+                <div class="request-item">
+                    {{ item.ingredient.name }}: 
+                    {{ item.quantity_requested|int }} {{ item.unit.alt_unit }}
+                </div>
+                {% endfor %}
+            </div>
+            {% if req.note %}
+            <div class="request-note">Note: {{ req.note }}</div>
+            {% endif %}
+            
+            <div class="request-actions">
+                <a href="{{ url_for('fulfill_move_request', request_id=req.id) }}" class="action-btn fulfill">✅ Fulfill</a>
+                <button onclick="rejectRequest({{ req.id }})" class="action-btn reject">❌ Reject</button>
+            </div>
+        </div>
+        {% endfor %}
+    {% else %}
+        <p style="text-align: center; color: #999; padding: 40px;">No pending move requests</p>
+    {% endif %}
+</div>
+
+<style>
+.request-card {
+    background: white;
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 12px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.request-header {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 8px;
+}
+
+.request-id {
+    font-weight: 600;
+    color: #007aff;
+}
+
+.request-date {
+    color: #666;
+    font-size: 12px;
+}
+
+.request-detail {
+    font-size: 13px;
+    color: #555;
+    margin-bottom: 8px;
+}
+
+.request-items {
+    background: #f9f9f9;
+    padding: 8px;
+    border-radius: 8px;
+    margin-top: 8px;
+    font-size: 13px;
+}
+
+.request-item {
+    padding: 2px 0;
+}
+
+.request-note {
+    font-size: 12px;
+    color: #888;
+    margin-top: 8px;
+    font-style: italic;
+}
+
+.request-actions {
+    display: flex;
+    gap: 12px;
+    margin-top: 12px;
+}
+
+.action-btn {
+    padding: 10px 16px;
+    border-radius: 8px;
+    font-size: 14px;
+    text-decoration: none;
+    display: inline-block;
+    text-align: center;
+    cursor: pointer;
+    border: none;
+    flex: 1;
+}
+
+.action-btn.fulfill {
+    background: #4caf50;
+    color: white;
+}
+
+.action-btn.reject {
+    background: #ff3b30;
+    color: white;
+}
+
+.flash {
+    background: #4caf50;
+    color: white;
+    padding: 12px;
+    border-radius: 8px;
+    margin-bottom: 16px;
+    text-align: center;
+}
+</style>
+
+<script>
+function rejectRequest(requestId) {
+    if (confirm('Are you sure you want to reject this move request?')) {
+        fetch(`/move_request/reject/${requestId}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert(data.message);
+            }
+        });
+    }
+}
+</script>
+{% endblock %}

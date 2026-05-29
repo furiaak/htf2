@@ -1,0 +1,152 @@
+{% extends "base.html" %}
+{% from "_item_table.html" import item_table %}
+
+{% block content %}
+<div class="header">
+    <h1>Add Movement</h1>
+    <div class="subtitle">{{ warehouse.name }}</div>
+</div>
+
+<div class="container">
+    {% with messages = get_flashed_messages() %}
+        {% if messages %}
+            {% for message in messages %}
+                <div class="flash">{{ message }}</div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <form method="POST">
+        <div class="form-group">
+            <label>Date</label>
+            <input type="date" name="date" value="{{ today }}" required>
+        </div>
+        
+        <div class="form-group">
+            <label>Direction</label>
+            <div class="radio-group">
+                <label><input type="radio" name="direction" value="IN" id="dir_in"> IN</label>
+                <label><input type="radio" name="direction" value="OUT" id="dir_out" checked> OUT</label>
+            </div>
+        </div>
+        
+        <div class="form-group">
+            <label>Movement Type</label>
+            <select name="movement_type" id="movement_type" onchange="updateMovementType()" required>
+                <option value="purchase" {% if movement_type == 'purchase' %}selected{% endif %}>Purchase</option>
+                <option value="transfer" {% if movement_type == 'transfer' %}selected{% endif %}>Transfer</option>
+                <option value="production" {% if movement_type == 'production' %}selected{% endif %}>Production</option>
+                <option value="waste" {% if movement_type == 'waste' %}selected{% endif %}>Waste</option>
+                <option value="vip" {% if movement_type == 'vip' %}selected{% endif %}>VIP</option>
+                <option value="adjustment" {% if movement_type == 'adjustment' %}selected{% endif %}>Adjustment</option>
+            </select>
+        </div>
+        
+        <div class="form-group">
+            <label>Partner (Supplier / Destination)</label>
+            <input type="text" name="partner" placeholder="dari siapa atau kemana">
+        </div>
+        
+        {{ item_table(ingredients, qty_label='Qty', show_unit_select=true, readonly=false) }}
+        
+        <div class="form-group">
+            <label>Note (PIC / Driver / Reference)</label>
+            <textarea name="note" rows="2" placeholder="catatan ..."></textarea>
+        </div>
+        
+        <button type="submit" class="btn">SUBMIT</button>
+    </form>
+</div>
+
+<style>
+.form-group {
+    margin-bottom: 16px;
+}
+
+.form-group label {
+    display: block;
+    font-size: 14px;
+    font-weight: 500;
+    margin-bottom: 6px;
+    color: #333;
+}
+
+.form-group input, .form-group select, .form-group textarea {
+    width: 100%;
+    padding: 12px;
+    font-size: 16px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    font-family: inherit;
+}
+
+.radio-group {
+    display: flex;
+    gap: 20px;
+    align-items: center;
+}
+
+.radio-group label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-weight: normal;
+    margin-bottom: 0;
+}
+
+.radio-group input {
+    width: auto;
+}
+
+.btn {
+    width: 100%;
+    padding: 14px;
+    font-size: 16px;
+    font-weight: 600;
+    border: none;
+    border-radius: 10px;
+    background: #007aff;
+    color: white;
+    cursor: pointer;
+    margin-top: 8px;
+}
+
+.flash {
+    background: #4caf50;
+    color: white;
+    padding: 12px;
+    border-radius: 8px;
+    margin-bottom: 16px;
+    text-align: center;
+}
+</style>
+
+<script>
+const dirIn = document.getElementById('dir_in');
+const dirOut = document.getElementById('dir_out');
+
+function updateMovementType() {
+    const movement_type = document.getElementById('movement_type').value;
+    const direction = dirIn.checked ? 'IN' : 'OUT';
+    window.location.href = window.location.pathname + '?direction=' + direction + '&movement_type=' + movement_type;
+}
+
+function updateDirection() {
+    const movement_type = document.getElementById('movement_type').value;
+    const direction = dirIn.checked ? 'IN' : 'OUT';
+    window.location.href = window.location.pathname + '?direction=' + direction + '&movement_type=' + movement_type;
+}
+
+dirIn.addEventListener('change', updateDirection);
+dirOut.addEventListener('change', updateDirection);
+
+// Preserve selection after reload
+const urlParams = new URLSearchParams(window.location.search);
+const dirParam = urlParams.get('direction');
+if (dirParam === 'IN') {
+    dirIn.checked = true;
+} else if (dirParam === 'OUT') {
+    dirOut.checked = true;
+}
+</script>
+{% endblock %}

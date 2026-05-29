@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="header">
+    <h1>{{ ingredient.name }}</h1>
+    <div class="subtitle">Movement History</div>
+</div>
+
+<div class="container">
+    <a href="{{ url_for('current_stock') }}" class="back-link">← Back to Stock</a>
+    
+    <div class="history-table">
+        <div class="history-row history-header">
+            <div>Date</div>
+            <div>Qty</div>
+            <div>Detail</div>
+        </div>
+        
+        {% for m in movements %}
+        <div class="history-row">
+            <div>{{ m.date.strftime('%Y-%m-%d') }}</div>
+            <div>{{ m.quantity|int }} {{ m.unit.abbreviation }}</div>
+            <div>
+                {{ m.direction }}: 
+                {% if m.note %}
+                    {{ m.note[:30] }}
+                {% else %}
+                    {{ m.movement_type }}
+                {% endif %}
+            </div>
+        </div>
+        {% else %}
+        <div class="history-row">
+            <div colspan="3" style="text-align: center; color: #999;">No movements found</div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

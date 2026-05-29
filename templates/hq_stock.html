@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="header">
+    <h1>HQ Stock Overview</h1>
+    <div class="subtitle">All Warehouses</div>
+</div>
+
+<div class="container">
+    {% for wh_data in stock_by_warehouse %}
+    <div class="warehouse-section">
+        <div class="warehouse-title">{{ wh_data.warehouse.name }} ({{ wh_data.warehouse.store_code }})</div>
+        
+        {% if wh_data.stock_list %}
+            <div class="stock-table">
+                {% for item in wh_data.stock_list %}
+                <div class="stock-row">
+                    <div class="stock-name">{{ item.ingredient.name }}</div>
+                    <div class="stock-qty">{{ item.display_qty }}</div>
+                </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="no-stock">No stock records</div>
+        {% endif %}
+    </div>
+    {% endfor %}
+</div>
+
+<style>
+.warehouse-section {
+    background: white;
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 20px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.warehouse-title {
+    font-weight: 600;
+    font-size: 18px;
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+    border-bottom: 2px solid #007aff;
+}
+
+.stock-table {
+    background: white;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.stock-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 10px 0;
+    border-bottom: 1px solid #eee;
+}
+
+.stock-name {
+    font-size: 14px;
+}
+
+.stock-qty {
+    font-size: 14px;
+    font-family: monospace;
+    color: #333;
+}
+
+.no-stock {
+    color: #999;
+    font-size: 13px;
+    text-align: center;
+    padding: 20px;
+}
+</style>
+{% endblock %}

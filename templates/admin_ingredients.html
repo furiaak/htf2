@@ -1,0 +1,255 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="header">
+    <h1>Admin: Ingredients</h1>
+    <div class="subtitle">Manage ingredients and units</div>
+</div>
+
+<div class="container">
+    {% with messages = get_flashed_messages() %}
+        {% if messages %}
+            {% for message in messages %}
+                <div class="flash">{{ message }}</div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <!-- Add New Ingredient Form -->
+    <div class="card">
+        <h3>➕ Add New Ingredient</h3>
+        <form method="POST" action="{{ url_for('admin_add_ingredient') }}">
+            <div class="form-group">
+                <label>Ingredient Name</label>
+                <input type="text" name="name" placeholder="e.g., Yeast, Chocolate" required>
+            </div>
+            <div class="form-group">
+                <label>Base Unit (e.g., kg, box, bal)</label>
+                <input type="text" name="base_unit_alt" placeholder="kg, box, bal" maxlength="10" required>
+            </div>
+            <button type="submit" class="btn">Create Ingredient</button>
+        </form>
+    </div>
+
+    <!-- Existing Ingredients -->
+    <div class="card">
+        <h3>📦 Existing Ingredients</h3>
+        
+        {% for ingredient in ingredients %}
+        <div class="ingredient-card">
+            <div class="ingredient-header">
+                <span class="ingredient-name">{{ ingredient.name }}</span>
+                <span class="ingredient-base">
+                    Base: {{ ingredient.base_unit.alt_unit if ingredient.base_unit else 'Not set' }}
+                </span>
+            </div>
+            
+            <div class="units-section">
+                <div class="units-title">Units:</div>
+                {% for unit in ingredient.units|sort(attribute='rank') %}
+                <div class="unit-row">
+                    <span><strong>{{ unit.alt_unit }}</strong></span>
+                    <span>1 {{ unit.alt_unit }} = {{ unit.conversion_to_base|int }} {{ ingredient.base_unit.alt_unit if ingredient.base_unit else 'units' }}</span>
+                    <span>Rank: {{ unit.rank }}</span>
+                    {% if unit.id == ingredient.base_unit_id %}
+                    <span class="base-badge">BASE</span>
+                    {% endif %}
+                </div>
+                {% endfor %}
+                
+                <!-- Add Unit Form (collapsible) -->
+                <div class="add-unit-form" id="add-unit-{{ ingredient.id }}" style="display: none;">
+                    <form method="POST" action="{{ url_for('admin_add_unit') }}">
+                        <input type="hidden" name="ingredient_id" value="{{ ingredient.id }}">
+                        <div class="form-row">
+                            <input type="text" name="alt_unit" placeholder="Unit code (e.g., kg, ctn, box)" required>
+                            <input type="number" name="conversion" step="1" placeholder="Conv to base" required>
+                            <button type="submit" class="btn-small">Add</button>
+                        </div>
+                    </form>
+                </div>
+                
+                <button class="btn-small toggle-unit" data-id="{{ ingredient.id }}">+ Add Unit</button>
+            </div>
+            
+            <div class="ingredient-actions">
+                <button onclick="deleteIngredient({{ ingredient.id }})" class="btn-small danger">Delete Ingredient</button>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<style>
+.card {
+    background: white;
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 20px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.card h3 {
+    margin-bottom: 16px;
+    font-size: 18px;
+}
+
+.form-group {
+    margin-bottom: 12px;
+}
+
+.form-group label {
+    display: block;
+    font-size: 14px;
+    font-weight: 500;
+    margin-bottom: 6px;
+    color: #333;
+}
+
+.form-group input {
+    width: 100%;
+    padding: 10px;
+    font-size: 14px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+}
+
+.form-row {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.ingredient-card {
+    border: 1px solid #e0e0e0;
+    border-radius: 10px;
+    padding: 12px;
+    margin-bottom: 12px;
+}
+
+.ingredient-header {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 10px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid #eee;
+}
+
+.ingredient-name {
+    font-weight: 600;
+    font-size: 16px;
+}
+
+.ingredient-base {
+    color: #666;
+    font-size: 12px;
+}
+
+.units-section {
+    margin: 10px 0;
+    padding-left: 8px;
+}
+
+.units-title {
+    font-size: 13px;
+    font-weight: 500;
+    margin-bottom: 6px;
+    color: #555;
+}
+
+.unit-row {
+    font-size: 13px;
+    padding: 4px 0;
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    align-items: center;
+}
+
+.base-badge {
+    background: #4caf50;
+    color: white;
+    font-size: 10px;
+    padding: 2px 6px;
+    border-radius: 10px;
+}
+
+.add-unit-form {
+    margin: 10px 0;
+}
+
+.btn {
+    width: 100%;
+    padding: 12px;
+    font-size: 16px;
+    font-weight: 600;
+    border: none;
+    border-radius: 10px;
+    background: #007aff;
+    color: white;
+    cursor: pointer;
+}
+
+.btn-small {
+    padding: 6px 12px;
+    font-size: 12px;
+    border: none;
+    border-radius: 6px;
+    background: #007aff;
+    color: white;
+    cursor: pointer;
+    margin-top: 4px;
+}
+
+.btn-small.danger {
+    background: #ff3b30;
+}
+
+.ingredient-actions {
+    margin-top: 10px;
+    text-align: right;
+}
+
+.flash {
+    background: #4caf50;
+    color: white;
+    padding: 12px;
+    border-radius: 8px;
+    margin-bottom: 16px;
+    text-align: center;
+}
+</style>
+
+<script>
+document.querySelectorAll('.toggle-unit').forEach(btn => {
+    btn.addEventListener('click', function() {
+        const id = this.dataset.id;
+        const form = document.getElementById(`add-unit-${id}`);
+        if (form.style.display === 'none') {
+            form.style.display = 'block';
+            this.textContent = '- Cancel';
+        } else {
+            form.style.display = 'none';
+            this.textContent = '+ Add Unit';
+        }
+    });
+});
+
+function deleteIngredient(ingredientId) {
+    if (confirm('Delete this ingredient and all its units? This may affect existing movements.')) {
+        fetch(`/admin/ingredient/delete/${ingredientId}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert(data.message);
+            }
+        });
+    }
+}
+</script>
+{% endblock %}

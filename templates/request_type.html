@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="header">
+    <h1>Buat Permintaan</h1>
+    <div class="subtitle">Pilih jenis transfer</div>
+</div>
+
+<div class="container">
+    <div class="option-card" onclick="location.href='{{ url_for('create_request', type='incoming') }}'">
+        <div class="option-icon">📥</div>
+        <div class="option-title">Transfer dari orang lain ke saya</div>
+        <div class="option-desc">Saya butuh stok dari gudang lain / toko</div>
+    </div>
+    
+    <div class="option-card" onclick="location.href='{{ url_for('create_request', type='outgoing') }}'">
+        <div class="option-icon">📤</div>
+        <div class="option-title">Transfer dari saya ke orang lain</div>
+        <div class="option-desc">Saya ingin mengirim stok ke gudang lain / toko</div>
+    </div>
+</div>
+
+<style>
+.option-card {
+    background: white;
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 16px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    cursor: pointer;
+    transition: all 0.2s;
+    text-align: center;
+}
+
+.option-card:active {
+    background: #f0f0f0;
+    transform: scale(0.98);
+}
+
+.option-icon {
+    font-size: 48px;
+    margin-bottom: 12px;
+}
+
+.option-title {
+    font-size: 18px;
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 8px;
+}
+
+.option-desc {
+    font-size: 13px;
+    color: #666;
+}
+</style>
+{% endblock %}

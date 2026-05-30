@@ -251,38 +251,60 @@
     </style>
 </head>
 <body>
+	<!-- Hamburger Menu -->
+	{% if session.user_id %}
+	<div style="position: fixed; top: 12px; right: 16px; z-index: 1000;">
+		<div class="hamburger" onclick="toggleMenu()" style="cursor: pointer; font-size: 24px; background: white; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; border-radius: 50%; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+			☰
+		</div>
+		<div id="dropdownMenu" style="display: none; position: absolute; right: 0; top: 48px; background: white; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); min-width: 180px; overflow: hidden;">
+			<div style="padding: 12px 16px; border-bottom: 1px solid #eee; background: #f9f9f9;">
+				👤 {{ session.username }}
+			</div>
+			<a href="{{ url_for('my_move_requests') }}" style="display: block; padding: 12px 16px; text-decoration: none; color: #333; border-bottom: 1px solid #eee;">
+				📋 Sejarah
+			</a>
+			<a href="#" style="display: block; padding: 12px 16px; text-decoration: none; color: #333; border-bottom: 1px solid #eee;">
+				🔑 Change Password
+			</a>
+			<a href="{{ url_for('logout') }}" style="display: block; padding: 12px 16px; text-decoration: none; color: #ff3b30;">
+				🚪 Logout
+			</a>
+		</div>
+	</div>
+	{% endif %}
+
     {% block content %}{% endblock %}
     
     {% if session.user_id %}
-    <div class="bottom-nav">
-        <a href="{{ url_for('current_stock') }}" class="nav-item {% if request.endpoint == 'current_stock' %}active{% endif %}">📊 Stok</a>
-        
-        {% if session.role == 'ST_MGR' or session.role == 'ST_REQ' %}
-        <a href="{{ url_for('create_request') }}" class="nav-item {% if request.endpoint == 'create_request' %}active{% endif %}">📝 Minta</a>
-        {% endif %}
-        
-        {% if session.role == 'WH_PIC' or session.role == 'ST_MGR' %}
-        <a href="{{ url_for('pending_move_requests') }}" class="nav-item {% if request.endpoint == 'pending_move_requests' %}active{% endif %}">⏳ OUT?</a>
-        {% endif %}
-        
-        {% if session.role == 'ST_MGR' or session.role == 'WH_PIC' %}
-        <a href="{{ url_for('add_movement') }}" class="nav-item {% if request.endpoint == 'add_movement' %}active{% endif %}">➕ Add</a>
-        {% endif %}
-        
-        {% if session.role == 'ST_MGR' or session.role == 'ST_REQ' %}
-        <a href="{{ url_for('my_move_requests') }}" class="nav-item {% if request.endpoint == 'my_move_requests' %}active{% endif %}">📋 HISTORY</a>
-        {% endif %}
-        
-        {% if session.role == 'ADMIN' %}
-        <a href="{{ url_for('admin_ingredients') }}" class="nav-item {% if request.endpoint == 'admin_ingredients' %}active{% endif %}">⚙️ Admin</a>
-        {% endif %}
-
-        {% if session.role in ['WH_PIC', 'ADMIN'] %}
-        <a href="{{ url_for('pending_receipts') }}" class="nav-item {% if request.endpoint == 'pending_receipts' %}active{% endif %}">📋 IN?</a>
-        {% endif %}
- 
-        <a href="{{ url_for('logout') }}" class="nav-item">🚪 Logout</a>
-    </div>
+	<div class="bottom-nav">
+		<a href="{{ url_for('current_stock') }}" class="nav-item">📊 Stok</a>
+		<a href="{{ url_for('request_type') }}" class="nav-item">📝 Minta</a>
+		<a href="{{ url_for('pending_move_requests') }}" class="nav-item">📤 OUT</a>
+		<a href="{{ url_for('pending_receipts') }}" class="nav-item">📥 IN</a>
+		<a href="{{ url_for('add_movement') }}" class="nav-item">➕ Add</a>		
+		{% if session.role == 'ADMIN' %}
+		<a href="{{ url_for('admin_ingredients') }}" class="nav-item">⚙️ Admin</a>
+		{% endif %}
+	</div>
     {% endif %}
+
+    <script>
+    function toggleMenu() {
+        const menu = document.getElementById('dropdownMenu');
+        if (menu) {
+            menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
+        }
+    }
+
+    // Close when clicking outside
+    document.addEventListener('click', function(event) {
+        const menu = document.getElementById('dropdownMenu');
+        const hamburger = document.querySelector('.hamburger');
+        if (menu && hamburger && !hamburger.contains(event.target) && !menu.contains(event.target)) {
+            menu.style.display = 'none';
+        }
+    });
+    </script>
 </body>
 </html>

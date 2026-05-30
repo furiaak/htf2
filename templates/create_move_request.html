@@ -38,15 +38,7 @@
             <input type="date" name="date" value="{{ today }}" required>
         </div>
         
-        <div class="form-group">
-            <label>Request Type</label>
-            <select name="movement_type" onchange="updateMovementType(this.value)" required>
-                <option value="transfer" {% if movement_type == 'transfer' %}selected{% endif %}>Pindahan</option>
-                <option value="production" {% if movement_type == 'production' %}selected{% endif %}>Produksi</option>
-                <option value="vip" {% if movement_type == 'vip' %}selected{% endif %}>VIP/Donasi</option>
-                <option value="adjustment" {% if movement_type == 'adjustment' %}selected{% endif %}>Adjustment</option>
-            </select>
-        </div>
+
         
         {% if ingredients %}
             {{ item_table(ingredients, qty_label='Requested', show_unit_select=true, readonly=false) }}

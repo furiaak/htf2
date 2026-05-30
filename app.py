@@ -150,10 +150,10 @@ def get_default_unit(ingredient, direction, movement_type=None):
     if direction == 'IN':
         return max(units, key=lambda u: u.rank)
     else:  # OUT
-        if movement_type == 'transfer':
-            return max(units, key=lambda u: u.rank)  # highest (carton)
-        else:
+        if movement_type == 'production':
             return min(units, key=lambda u: u.rank)  # lowest (box)
+        else:
+            return max(units, key=lambda u: u.rank)  # highest (carton)
 
 def format_quantity(base_quantity, ingredient):
     if not ingredient.units:
@@ -252,9 +252,9 @@ def fulfill_move_request(request_id):
     if 'user_id' not in session:
         return redirect(url_for('login'))
     
-    if session['role'] not in ['WH_PIC', 'ST_MGR']:
-        flash('Only warehouse or store PIC can fulfill requests')
-        return redirect(url_for('current_stock'))
+    #if session['role'] not in ['WH_PIC', 'ST_MGR']:
+    #    flash('Only warehouse or store PIC can fulfill requests')
+    #    return redirect(url_for('current_stock'))
     
     move_request = MoveRequest.query.get_or_404(request_id)
     
@@ -423,7 +423,7 @@ def fulfill_move_request(request_id):
             
             # Update request status
             if all_fulfilled and any_fulfilled:
-                move_request.status = 'COMPLETED'
+                move_request.status = 'IN_TRANSIT'
             elif any_fulfilled:
                 move_request.status = 'PARTIAL'
             else:
@@ -452,9 +452,9 @@ def pending_move_requests():
     if 'user_id' not in session:
         return redirect(url_for('login'))
     
-    if session['role'] not in ['WH_PIC', 'ST_MGR']:
-        flash('Only warehouse PIC can view pending requests')
-        return redirect(url_for('current_stock'))
+    # if session['role'] not in ['WH_PIC', 'ST_MGR']:
+    #    flash('Only warehouse PIC can view pending requests')
+    #    return redirect(url_for('current_stock'))
     
     warehouse_id = session['warehouse_id']
     
@@ -465,49 +465,70 @@ def pending_move_requests():
     
     return render_template('pending_move_requests.html', requests=pending_reqs)
 
-@app.route('/request/create', methods=['GET', 'POST'])
-def create_request():
+@app.route('/request/create/<string:type>', methods=['GET', 'POST'])
+def create_request(type):
     if 'user_id' not in session:
         return redirect(url_for('login'))
     
-    if session['role'] not in ['ST_MGR', 'ST_REQ']:
-        flash('Only store managers and requestors can create requests')
-        return redirect(url_for('current_stock'))
+    # Permission check
+    # if type == 'incoming':
+    #    if session['role'] not in ['ST_MGR', 'ST_REQ']:
+    #        flash('Only store managers and requestors can create incoming requests')
+    #        return redirect(url_for('current_stock'))
+    # elif type == 'outgoing':
+    #   if session['role'] != 'WH_PIC':
+    #        flash('Only warehouse PIC can create outgoing requests')
+    #        return redirect(url_for('current_stock'))
+    # else:
+    #    flash('Invalid request type')
+    #    return redirect(url_for('request_type'))
     
-    store_warehouse_id = session['warehouse_id']
     user_id = session['user_id']
+    my_warehouse_id = session['warehouse_id']
+    my_warehouse = Warehouse.query.get(my_warehouse_id)  # FIX: added this line
     
     if request.method == 'POST':
         date_str = request.form['date']
         note = request.form.get('note', '')
-        to_warehouse_id = store_warehouse_id
-        movement_type = request.form['movement_type']
+        movement_type = request.form.get('movement_type', 'transfer')
+        if type in ['incoming', 'outgoing']:
+            movement_type = 'transfer'
         
-        # Validate from_warehouse_id
-        try:
-            from_warehouse_id = int(request.form['from_warehouse_id'])
-        except (ValueError, TypeError):
-            flash('Please select a valid source warehouse')
-            return redirect(url_for('create_request'))
+        if type == 'incoming':
+            # From others to me
+            to_warehouse_id = my_warehouse_id
+            try:
+                from_warehouse_id = int(request.form['from_warehouse_id'])
+            except (ValueError, TypeError):
+                flash('Please select a source warehouse')
+                return redirect(url_for('create_request', type=type))
+        else:  # outgoing
+            # From me to others
+            from_warehouse_id = my_warehouse_id
+            try:
+                to_warehouse_id = int(request.form['to_warehouse_id'])
+            except (ValueError, TypeError):
+                flash('Please select a destination warehouse')
+                return redirect(url_for('create_request', type=type))
         
         # Validate date
         try:
             request_date = datetime.strptime(date_str, '%Y-%m-%d').date()
         except ValueError:
             flash('Invalid date format')
-            return redirect(url_for('create_request'))
-        
-        # Validate movement type
-        valid_movement_types = ['transfer', 'production', 'vip', 'adjustment']
-        if movement_type not in valid_movement_types:
-            flash('Invalid request type')
-            return redirect(url_for('create_request'))
-        
-        # Check if source warehouse exists
-        source_warehouse = Warehouse.query.get(from_warehouse_id)
-        if not source_warehouse:
-            flash('Selected warehouse does not exist')
-            return redirect(url_for('create_request'))
+            return redirect(url_for('create_request', type=type))
+       
+        # Check if warehouse exists
+        if type == 'incoming':
+            source_warehouse = Warehouse.query.get(from_warehouse_id)
+            if not source_warehouse:
+                flash('Selected warehouse does not exist')
+                return redirect(url_for('create_request', type=type))
+        else:
+            dest_warehouse = Warehouse.query.get(to_warehouse_id)
+            if not dest_warehouse:
+                flash('Selected destination does not exist')
+                return redirect(url_for('create_request', type=type))
         
         # Collect and validate items
         items = []
@@ -524,24 +545,29 @@ def create_request():
                     if quantity == 0:
                         continue
                 except ValueError:
-                    flash(f'Invalid quantity value. Please enter a valid number.')
+                    flash('Invalid quantity value')
                     has_error = True
                     break
                 
                 ingredient_id = int(key.split('_')[1])
                 unit_id = int(request.form[f'unit_{ingredient_id}'])
                 
-                # Check if ingredient exists in source warehouse (has stock)
-                balance = InventoryBalance.query.filter_by(
-                    warehouse_id=from_warehouse_id,
-                    ingredient_id=ingredient_id
-                ).first()
-                
-                if not balance or balance.balance_base <= 0:
-                    ingredient = Ingredient.query.get(ingredient_id)
-                    flash(f'"{ingredient.name if ingredient else "Item"}" is not available in {source_warehouse.name}')
-                    has_error = True
-                    break
+                # For outgoing: check if source has enough stock
+                if type == 'outgoing':
+                    balance = InventoryBalance.query.filter_by(
+                        warehouse_id=from_warehouse_id,
+                        ingredient_id=ingredient_id
+                    ).first()
+                    current_stock = balance.balance_base if balance else 0
+                    
+                    unit = Unit.query.get(unit_id)
+                    quantity_base = quantity * unit.conversion_to_base
+                    
+                    if quantity_base > current_stock:
+                        ingredient = Ingredient.query.get(ingredient_id)
+                        flash(f'Insufficient stock for {ingredient.name}. Available: {format_quantity(current_stock, ingredient)}')
+                        has_error = True
+                        break
                 
                 items.append({
                     'ingredient_id': ingredient_id,
@@ -550,13 +576,13 @@ def create_request():
                 })
         
         if has_error:
-            return redirect(url_for('create_request'))
+            return redirect(url_for('create_request', type=type))
         
         if not items:
-            flash('Please request at least one item with quantity greater than zero')
-            return redirect(url_for('create_request'))
+            flash('Please request at least one item')
+            return redirect(url_for('create_request', type=type))
         
-        # Create request header
+        # Create move request
         new_request = MoveRequest(
             from_warehouse_id=from_warehouse_id,
             to_warehouse_id=to_warehouse_id,
@@ -580,39 +606,147 @@ def create_request():
             db.session.add(request_item)
         
         db.session.commit()
-        flash(f'Request #{new_request.id} created successfully')
+        
+        # For outgoing: immediately deduct stock and create movements
+        if type == 'outgoing':
+            try:
+                for item in items:
+                    unit = Unit.query.get(item['unit_id'])
+                    quantity_base = item['quantity'] * unit.conversion_to_base
+                    
+                    # Create OUT movement from source
+                    out_movement = Movement(
+                        warehouse_id=from_warehouse_id,
+                        ingredient_id=item['ingredient_id'],
+                        direction='OUT',
+                        movement_type=movement_type,
+                        quantity=item['quantity'],
+                        unit_id=item['unit_id'],
+                        quantity_base=quantity_base,
+                        date=request_date,
+                        note=f"Outgoing request #{new_request.id}: {note}",
+                        origin_destination=f"To {dest_warehouse.name}",
+                        created_by_user_id=user_id,
+                        move_request_id=new_request.id,
+                        status='completed'
+                    )
+                    db.session.add(out_movement)
+                    
+                    # Create IN movement (pending confirmation)
+                    in_movement = Movement(
+                        warehouse_id=to_warehouse_id,
+                        ingredient_id=item['ingredient_id'],
+                        direction='IN',
+                        movement_type=movement_type,
+                        quantity=item['quantity'],
+                        unit_id=item['unit_id'],
+                        quantity_base=quantity_base,
+                        date=request_date,
+                        note=f"Outgoing request #{new_request.id}: {note}",
+                        origin_destination=f"From {my_warehouse.name}",  # FIX: now my_warehouse is defined
+                        created_by_user_id=user_id,
+                        move_request_id=new_request.id,
+                        status='pending'
+                    )
+                    db.session.add(in_movement)
+                    
+                    # Deduct from source balance
+                    source_balance = InventoryBalance.query.filter_by(
+                        warehouse_id=from_warehouse_id,
+                        ingredient_id=item['ingredient_id']
+                    ).first()
+                    if source_balance:
+                        source_balance.balance_base -= quantity_base
+                        source_balance.last_updated = datetime.utcnow()
+                
+                new_request.status = 'IN_TRANSIT'
+                db.session.commit()
+                flash(f'Outgoing request #{new_request.id} created. Stock deducted from your warehouse.')
+                
+            except Exception as e:
+                db.session.rollback()
+                flash(f'Error creating movements: {str(e)}')
+                return redirect(url_for('current_stock'))
+        else:
+            flash(f'Request #{new_request.id} created successfully')
+        
         return redirect(url_for('my_move_requests'))
     
-    # GET request
-    selected_warehouse_id = request.args.get('from_warehouse_id', type=int)
-    movement_type = request.args.get('movement_type', 'transfer')
-
-    warehouses = Warehouse.query.filter(Warehouse.id != store_warehouse_id).all()
-
-    if not selected_warehouse_id and warehouses:
-        selected_warehouse_id = warehouses[0].id
-
-    ingredients_data = []
-    if selected_warehouse_id:
-        ingredients_data = get_ingredients_with_units(selected_warehouse_id)
+    # GET request - show form
+    today = date.today().isoformat()
+    
+    if type == 'incoming':
+        # Show other warehouses as source
+        warehouses = Warehouse.query.filter(Warehouse.id != my_warehouse_id).all()
+        selected_warehouse_id = request.args.get('from_warehouse_id', type=int)
+        if not selected_warehouse_id and warehouses:
+            selected_warehouse_id = warehouses[0].id
         
-        for ing in ingredients_data:
-            if ing['units']:
-                if movement_type == 'transfer':
+        ingredients_data = []
+        if selected_warehouse_id:
+            ingredients_data = get_ingredients_with_units(selected_warehouse_id)
+            for ing in ingredients_data:
+                if ing['units']:
                     default_unit = max(ing['units'], key=lambda u: u['rank'])
-                else:
-                    default_unit = min(ing['units'], key=lambda u: u['rank'])
-                ing['default_unit_id'] = default_unit['id']
-
-    store_warehouse = Warehouse.query.get(store_warehouse_id)
-
-    return render_template('create_move_request.html',
-                          ingredients=ingredients_data,
-                          warehouses=warehouses,
-                          selected_warehouse_id=selected_warehouse_id,
-                          warehouse=store_warehouse,
-                          today=date.today().isoformat(),
-                          movement_type=movement_type)
+                    ing['default_unit_id'] = default_unit['id']
+        
+        return render_template('create_move_request.html',
+                              ingredients=ingredients_data,
+                              warehouses=warehouses,
+                              selected_warehouse_id=selected_warehouse_id,
+                              warehouse=my_warehouse,
+                              today=today,
+                              movement_type='transfer',
+                              request_type=type)
+    
+    else:  # outgoing
+        # Show other warehouses as destination
+        warehouses = Warehouse.query.filter(Warehouse.id != my_warehouse_id).all()
+        selected_warehouse_id = request.args.get('to_warehouse_id', type=int)
+        if not selected_warehouse_id and warehouses:
+            selected_warehouse_id = warehouses[0].id
+        
+        # Show only ingredients with stock > 0
+        ingredients_data = []
+        ingredients = Ingredient.query.filter_by(is_approved=True).order_by(Ingredient.name).all()
+        
+        for ing in ingredients:
+            balance = InventoryBalance.query.filter_by(
+                warehouse_id=my_warehouse_id,
+                ingredient_id=ing.id
+            ).first()
+            current_stock = balance.balance_base if balance else 0
+            
+            if current_stock <= 0:
+                continue
+            
+            units = []
+            for unit in ing.units:
+                units.append({
+                    'id': unit.id,
+                    'alt_unit': unit.alt_unit,
+                    'rank': unit.rank,
+                    'conversion_to_base': unit.conversion_to_base
+                })
+            
+            default_unit = max(units, key=lambda u: u['rank'])
+            
+            ingredients_data.append({
+                'id': ing.id,
+                'name': ing.name,
+                'units': units,
+                'default_unit_id': default_unit['id'],
+                'display_stock': format_quantity(current_stock, ing)
+            })
+        
+        return render_template('create_outgoing_request.html',
+                              ingredients=ingredients_data,
+                              warehouses=warehouses,
+                              selected_warehouse_id=selected_warehouse_id,
+                              warehouse=my_warehouse,
+                              today=today,
+                              movement_type='transfer',
+                              request_type=type)
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -644,6 +778,12 @@ def index():
         return redirect(url_for('login'))
     return redirect(url_for('current_stock'))
 
+@app.route('/request/create')
+def request_type():
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+    return render_template('request_type.html')
+    
 @app.route('/stock')
 def current_stock():
     if 'user_id' not in session:
@@ -750,11 +890,7 @@ def add_movement():
             flash('Invalid direction')
             return redirect(url_for('add_movement'))
         
-        # Validate movement type
-        valid_movement_types = ['purchase', 'transfer', 'production', 'waste', 'vip', 'adjustment']
-        if movement_type not in valid_movement_types:
-            flash('Invalid movement type')
-            return redirect(url_for('add_movement'))
+        # Skip Validate movement type
         
         # Collect and validate items
         items = []
@@ -857,8 +993,10 @@ def add_movement():
         return redirect(url_for('current_stock'))
     
     # GET request - show form
-    direction = request.args.get('direction', 'OUT')
-    movement_type = request.args.get('movement_type', 'production')
+    direction = request.args.get('direction', 'IN')
+    movement_type = request.args.get('movement_type', '')
+    if not movement_type:
+        movement_type = ''
     warehouse = Warehouse.query.get(warehouse_id)
 
     # Get all ingredients with their units
@@ -893,7 +1031,14 @@ def add_movement():
         
         fake_ing = FakeIngredient(ing.units)
         default_unit = get_default_unit(fake_ing, direction, movement_type)
-        
+
+        print(f"DEBUG: Ingredient: {ing.name}")
+        print(f"DEBUG: Units: {[(u.alt_unit, u.rank) for u in ing.units]}")
+        print(f"DEBUG: Direction: {direction}, Movement type: {movement_type}")
+        print(f"DEBUG: Default unit: {default_unit.alt_unit if default_unit else None}")
+        print("---")  
+
+  
         ingredient_data.append({
             'id': ing.id,
             'name': ing.name,
@@ -1089,9 +1234,9 @@ def pending_receipts():
         return redirect(url_for('login'))
     
     # Only WH_PIC can confirm receipts
-    if session['role'] != 'WH_PIC':
-        flash('Only warehouse PIC can confirm receipts')
-        return redirect(url_for('current_stock'))
+    # if session['role'] != 'WH_PIC':
+    #    flash('Only warehouse PIC can confirm receipts')
+    #    return redirect(url_for('current_stock'))
     
     warehouse_id = session['warehouse_id']
     
@@ -1128,9 +1273,9 @@ def confirm_receipt():
         return redirect(url_for('login'))
     
     # Only WH_PIC can confirm receipts
-    if session['role'] != 'WH_PIC':
-        flash('Only warehouse PIC can confirm receipts')
-        return redirect(url_for('current_stock'))
+    # if session['role'] != 'WH_PIC':
+    #     flash('Only warehouse PIC can confirm receipts')
+    #    return redirect(url_for('pending_receipts'))
     
     move_request_id = request.form.get('move_request_id', type=int)
     note = request.form.get('note', '')
@@ -1213,7 +1358,11 @@ def confirm_receipt():
             # Add global note if provided
             if note:
                 mov.note = f"{mov.note or ''} {note}".strip()
-        
+
+        move_request = MoveRequest.query.get(move_request_id)
+        if move_request:
+            move_request.status = 'COMPLETED' 
+ 
         db.session.commit()
         flash(f'Receipt confirmed for {len(movements)} item(s)')
         
@@ -1230,9 +1379,9 @@ def reject_receipt(movement_id):
         flash('Not logged in')
         return redirect(url_for('login'))
     
-    if session['role'] not in ['ST_MGR', 'ADMIN']:
-        flash('Permission denied')
-        return redirect(url_for('current_stock'))
+    # if session['role'] not in ['ST_MGR', 'ADMIN']:
+    #    flash('Permission denied')
+    #    return redirect(url_for('current_stock'))
     
     movement = Movement.query.get_or_404(movement_id)
     

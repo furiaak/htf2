@@ -25,21 +25,34 @@
         <div class="form-group">
             <label>Direction</label>
             <div class="radio-group">
-                <label><input type="radio" name="direction" value="IN" id="dir_in"> IN</label>
-                <label><input type="radio" name="direction" value="OUT" id="dir_out" checked> OUT</label>
+                <label style="color: green; display: flex; align-items: center; gap: 6px; cursor: pointer;">
+                    <input type="radio" name="direction" value="IN" id="dir_in" checked>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M12 5V19M12 19L5 12M12 19L19 12" stroke="green" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                    Masuk
+                </label>
+                <label style="color: red; display: flex; align-items: center; gap: 6px; cursor: pointer;">
+                    <input type="radio" name="direction" value="OUT" id="dir_out">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M12 19V5M12 5L5 12M12 5L19 12" stroke="red" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                    Keluar
+                </label>
             </div>
         </div>
         
         <div class="form-group">
             <label>Movement Type</label>
-            <select name="movement_type" id="movement_type" onchange="updateMovementType()" required>
-                <option value="purchase" {% if movement_type == 'purchase' %}selected{% endif %}>Purchase</option>
-                <option value="transfer" {% if movement_type == 'transfer' %}selected{% endif %}>Transfer</option>
-                <option value="production" {% if movement_type == 'production' %}selected{% endif %}>Production</option>
-                <option value="waste" {% if movement_type == 'waste' %}selected{% endif %}>Waste</option>
-                <option value="vip" {% if movement_type == 'vip' %}selected{% endif %}>VIP</option>
-                <option value="adjustment" {% if movement_type == 'adjustment' %}selected{% endif %}>Adjustment</option>
-            </select>
+				<select name="movement_type" id="movement_type" >
+					<option value="" disabled {% if not movement_type %}selected{% endif %}>-- Select movement type --</option>
+					<option value="purchase" {% if movement_type == 'purchase' %}selected{% endif %}>Purchase</option>
+					<option value="transfer" {% if movement_type == 'transfer' %}selected{% endif %}>Transfer</option>
+					<option value="production" {% if movement_type == 'production' %}selected{% endif %}>Production</option>
+					<option value="waste" {% if movement_type == 'waste' %}selected{% endif %}>Waste</option>
+					<option value="vip" {% if movement_type == 'vip' %}selected{% endif %}>VIP</option>
+					<option value="adjustment" {% if movement_type == 'adjustment' %}selected{% endif %}>Adjustment</option>
+				</select>
         </div>
         
         <div class="form-group">
@@ -82,7 +95,7 @@
 
 .radio-group {
     display: flex;
-    gap: 20px;
+    justify-content: space-between;
     align-items: center;
 }
 
@@ -92,10 +105,12 @@
     gap: 6px;
     font-weight: normal;
     margin-bottom: 0;
+    cursor: pointer;
 }
 
 .radio-group input {
     width: auto;
+    margin: 0;
 }
 
 .btn {

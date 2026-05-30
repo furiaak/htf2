@@ -664,8 +664,7 @@ def current_stock():
             ).join(
                 Ingredient, InventoryBalance.ingredient_id == Ingredient.id
             ).filter(
-                InventoryBalance.warehouse_id == wh.id,
-                InventoryBalance.balance_base > 0
+                InventoryBalance.warehouse_id == wh.id
             ).order_by(Ingredient.name.asc()).all()
             
             stock_list = []
@@ -693,8 +692,7 @@ def current_stock():
     ).join(
         Ingredient, InventoryBalance.ingredient_id == Ingredient.id
     ).filter(
-        InventoryBalance.warehouse_id == warehouse_id,
-        InventoryBalance.balance_base > 0
+        InventoryBalance.warehouse_id == warehouse_id
     ).order_by(Ingredient.name.asc()).all()
     
     stock_list = []

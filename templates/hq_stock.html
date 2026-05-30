@@ -1,22 +1,23 @@
 {% extends "base.html" %}
 
-{% block content %}
-<div class="header">
-    <h1>HQ Stock Overview</h1>
-    <div class="subtitle">All Warehouses</div>
-</div>
+{% block header_subtitle %}
+<div class="subtitle">All Warehouses</div>
+{% endblock %}
 
+{% block content %}
 <div class="container">
+    <h2 style="margin-bottom: 20px; font-size: 20px; font-weight: 600; color: #3E5A3A;">HQ Stock Overview</h2>
+
     {% for wh_data in stock_by_warehouse %}
     <div class="warehouse-section">
         <div class="warehouse-title">{{ wh_data.warehouse.name }} ({{ wh_data.warehouse.store_code }})</div>
         
         {% if wh_data.stock_list %}
-            <div class="stock-table">
+            <div class="stock-list">
                 {% for item in wh_data.stock_list %}
                 <div class="stock-row">
-                    <div class="stock-name">{{ item.ingredient.name }}</div>
-                    <div class="stock-qty">{{ item.display_qty }}</div>
+                    <span class="stock-name">{{ item.ingredient.name }}</span>
+                    <span class="stock-qty">{{ item.display_qty }}</span>
                 </div>
                 {% endfor %}
             </div>
@@ -27,13 +28,15 @@
     {% endfor %}
 </div>
 
+<!-- Minimal local style for warehouse‑specific components (no color overrides of base) -->
 <style>
 .warehouse-section {
     background: white;
-    border-radius: 12px;
+    border-radius: 16px;
     padding: 16px;
     margin-bottom: 20px;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    border: 1px solid #E6EDE6;
 }
 
 .warehouse-title {
@@ -41,12 +44,13 @@
     font-size: 18px;
     margin-bottom: 12px;
     padding-bottom: 8px;
-    border-bottom: 2px solid #007aff;
+    border-bottom: 2px solid #7C9F6E;  /* sage green */
+    color: #2E3B2B;
 }
 
-.stock-table {
+.stock-list {
     background: white;
-    border-radius: 8px;
+    border-radius: 12px;
     overflow: hidden;
 }
 
@@ -54,21 +58,27 @@
     display: flex;
     justify-content: space-between;
     padding: 10px 0;
-    border-bottom: 1px solid #eee;
+    border-bottom: 1px solid #E6EDE6;
+}
+
+.stock-row:last-child {
+    border-bottom: none;
 }
 
 .stock-name {
     font-size: 14px;
+    font-weight: 500;
+    color: #2E3B2B;
 }
 
 .stock-qty {
     font-size: 14px;
     font-family: monospace;
-    color: #333;
+    color: #5E6E5E;
 }
 
 .no-stock {
-    color: #999;
+    color: #9AAE9A;
     font-size: 13px;
     text-align: center;
     padding: 20px;

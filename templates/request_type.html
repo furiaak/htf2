@@ -1,12 +1,13 @@
 {% extends "base.html" %}
 
-{% block content %}
-<div class="header">
-    <h1>Buat Permintaan</h1>
-    <div class="subtitle">Pilih jenis transfer</div>
-</div>
+{% block header_subtitle %}
+<div class="subtitle">Pilih jenis transfer</div>
+{% endblock %}
 
+{% block content %}
 <div class="container">
+    <h2 style="margin-bottom: 20px; font-size: 20px; font-weight: 600; color: #3E5A3A;">Buat Permintaan</h2>
+
     <div class="option-card" onclick="location.href='{{ url_for('create_request', type='incoming') }}'">
         <div class="option-icon">📥</div>
         <div class="option-title">Transfer dari orang lain ke saya</div>
@@ -20,21 +21,24 @@
     </div>
 </div>
 
+<!-- Minimal local style for option cards (sage green palette) -->
 <style>
 .option-card {
     background: white;
-    border-radius: 12px;
-    padding: 20px;
+    border-radius: 20px;
+    padding: 24px 20px;
     margin-bottom: 16px;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
     cursor: pointer;
-    transition: all 0.2s;
+    transition: all 0.2s ease;
     text-align: center;
+    border: 1px solid #E6EDE6;
 }
 
 .option-card:active {
-    background: #f0f0f0;
+    background: #F7FAF5;
     transform: scale(0.98);
+    border-color: #7C9F6E;
 }
 
 .option-icon {
@@ -45,13 +49,13 @@
 .option-title {
     font-size: 18px;
     font-weight: 600;
-    color: #333;
+    color: #2E3B2B;
     margin-bottom: 8px;
 }
 
 .option-desc {
     font-size: 13px;
-    color: #666;
+    color: #6B7F6B;
 }
 </style>
 {% endblock %}

@@ -1,11 +1,10 @@
 {% extends "base.html" %}
 
-{% block content %}
-<div class="header">
-    <h1>Pending Move Requests</h1>
-    <div class="subtitle">Requests awaiting fulfillment</div>
-</div>
+{% block header_subtitle %}
+<div class="subtitle">Requests awaiting fulfillment</div>
+{% endblock %}
 
+{% block content %}
 <div class="container">
     {% with messages = get_flashed_messages() %}
         {% if messages %}
@@ -15,126 +14,52 @@
         {% endif %}
     {% endwith %}
 
+    <h2 style="margin-bottom: 20px; font-size: 20px; font-weight: 600; color: #3E5A3A;">Pending Move Requests</h2>
+
     {% if requests %}
         {% for req in requests %}
-        <div class="request-card">
-            <div class="request-header">
-                <span class="request-id">Move Request #{{ req.id }}</span>
-                <span class="request-date">{{ req.request_date.strftime('%Y-%m-%d') }}</span>
+        <div class="stock-card" style="cursor: default; padding: 16px;">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                <span style="font-weight: 600; color: #7C9F6E;">Move Request #{{ req.id }}</span>
+                <span style="color: #6B7F6B; font-size: 12px;">{{ req.request_date.strftime('%Y-%m-%d') }}</span>
             </div>
-            <div class="request-detail">
+            <div style="font-size: 13px; color: #5E6E5E; margin-bottom: 8px;">
                 From: {{ req.from_warehouse.name }}<br>
                 To: {{ req.to_warehouse.name }}<br>
                 Requested by: {{ req.requested_by.full_name }}
             </div>
-            <div class="request-items">
+            <div style="background: #F7FAF5; padding: 8px; border-radius: 12px; margin-top: 8px; font-size: 13px;">
                 {% for item in req.items %}
-                <div class="request-item">
+                <div style="padding: 2px 0;">
                     {{ item.ingredient.name }}: 
                     {{ item.quantity_requested|int }} {{ item.unit.alt_unit }}
                 </div>
                 {% endfor %}
             </div>
             {% if req.note %}
-            <div class="request-note">Note: {{ req.note }}</div>
+            <div style="font-size: 12px; color: #7A8F7A; margin-top: 8px; font-style: italic;">Note: {{ req.note }}</div>
             {% endif %}
             
-            <div class="request-actions">
-                <a href="{{ url_for('fulfill_move_request', request_id=req.id) }}" class="action-btn fulfill">✅ Fulfill</a>
-                <button onclick="rejectRequest({{ req.id }})" class="action-btn reject">❌ Reject</button>
+            <div style="display: flex; gap: 12px; margin-top: 12px;">
+                <a href="{{ url_for('fulfill_move_request', request_id=req.id) }}" class="btn" style="background: #7C9F6E; text-align: center; padding: 10px; text-decoration: none;">✅ Fulfill</a>
+                <button onclick="rejectRequest({{ req.id }})" class="btn" style="background: #D9534F; text-align: center; padding: 10px;">❌ Reject</button>
             </div>
         </div>
         {% endfor %}
     {% else %}
-        <p style="text-align: center; color: #999; padding: 40px;">No pending move requests</p>
+        <div class="stock-card" style="text-align: center; cursor: default;">
+            <div class="stock-name" style="justify-content: center;">📭</div>
+            <div class="stock-qty">No pending move requests</div>
+        </div>
     {% endif %}
 </div>
 
+<!-- Minimal local style for any additional spacing (no color overrides) -->
 <style>
-.request-card {
-    background: white;
-    border-radius: 12px;
-    padding: 16px;
-    margin-bottom: 12px;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-}
-
-.request-header {
-    display: flex;
-    justify-content: space-between;
-    margin-bottom: 8px;
-}
-
-.request-id {
-    font-weight: 600;
-    color: #007aff;
-}
-
-.request-date {
-    color: #666;
-    font-size: 12px;
-}
-
-.request-detail {
-    font-size: 13px;
-    color: #555;
-    margin-bottom: 8px;
-}
-
-.request-items {
-    background: #f9f9f9;
-    padding: 8px;
-    border-radius: 8px;
-    margin-top: 8px;
-    font-size: 13px;
-}
-
-.request-item {
-    padding: 2px 0;
-}
-
-.request-note {
-    font-size: 12px;
-    color: #888;
-    margin-top: 8px;
-    font-style: italic;
-}
-
-.request-actions {
-    display: flex;
-    gap: 12px;
-    margin-top: 12px;
-}
-
-.action-btn {
-    padding: 10px 16px;
-    border-radius: 8px;
-    font-size: 14px;
-    text-decoration: none;
-    display: inline-block;
-    text-align: center;
-    cursor: pointer;
-    border: none;
+/* Ensure buttons inside the card are full width on small screens */
+.stock-card .btn {
     flex: 1;
-}
-
-.action-btn.fulfill {
-    background: #4caf50;
-    color: white;
-}
-
-.action-btn.reject {
-    background: #ff3b30;
-    color: white;
-}
-
-.flash {
-    background: #4caf50;
-    color: white;
-    padding: 12px;
-    border-radius: 8px;
-    margin-bottom: 16px;
-    text-align: center;
+    margin-top: 0;
 }
 </style>
 

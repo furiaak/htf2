@@ -1,11 +1,10 @@
 {% extends "base.html" %}
 
-{% block content %}
-<div class="header">
-    <h1>My Move Requests</h1>
-    <div class="subtitle">Requests you have created</div>
-</div>
+{% block header_subtitle %}
+<div class="subtitle">Requests you have created</div>
+{% endblock %}
 
+{% block content %}
 <div class="container">
     {% with messages = get_flashed_messages() %}
         {% if messages %}
@@ -15,170 +14,67 @@
         {% endif %}
     {% endwith %}
 
+    <h2 style="margin-bottom: 20px; font-size: 20px; font-weight: 600; color: #3E5A3A;">My Move Requests</h2>
+
     {% if requests %}
         {% for req in requests %}
-        <div class="request-card">
-            <div class="request-header">
-                <span class="request-id">Move Request #{{ req.id }}</span>
-                <span class="request-date">{{ req.request_date.strftime('%Y-%m-%d') }}</span>
+        <div class="stock-card" style="cursor: default; padding: 16px;">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                <span style="font-weight: 600; color: #7C9F6E;">Move Request #{{ req.id }}</span>
+                <span style="color: #6B7F6B; font-size: 12px;">{{ req.request_date.strftime('%Y-%m-%d') }}</span>
             </div>
             
             {% if req.status == 'PENDING' %}
-            <div class="request-actions">
-                <a href="{{ url_for('edit_move_request', request_id=req.id) }}" class="action-btn edit">✏️ Edit</a>
-                <button onclick="cancelRequest({{ req.id }})" class="action-btn cancel">❌ Cancel</button>
+            <div style="display: flex; gap: 12px; margin-bottom: 12px;">
+                <a href="{{ url_for('edit_move_request', request_id=req.id) }}" class="btn" style="background: #7C9F6E; text-align: center; padding: 8px; text-decoration: none;">✏️ Edit</a>
+                <button onclick="cancelRequest({{ req.id }})" class="btn" style="background: #D9534F; text-align: center; padding: 8px;">❌ Cancel</button>
             </div>
             {% endif %}
             
-            <div class="request-status">
+            <div style="font-size: 13px; margin-bottom: 8px;">
                 Status: 
-                <span class="status-{{ req.status.lower() }}">
+                <span class="status-{{ req.status.lower() }}" style="font-weight: 500;">
                     {{ req.status }}
                 </span>
             </div>
-            <div class="request-detail">
+            <div style="font-size: 13px; color: #5E6E5E; margin-bottom: 8px;">
                 From: {{ req.from_warehouse.name }}<br>
                 To: {{ req.to_warehouse.name }}
             </div>
-            <div class="request-items">
+            <div style="background: #F7FAF5; padding: 8px; border-radius: 12px; margin-top: 8px; font-size: 13px;">
                 {% for item in req.items %}
-                <div class="request-item">
+                <div style="padding: 2px 0;">
                     {{ item.ingredient.name }}: 
-					{{ item.quantity_requested|int }} {{ item.unit.alt_unit }}
-					{% if item.received_quantity > 0 %}
-					(Received: {{ item.received_quantity|int }} {{ item.received_unit.alt_unit }})
-					{% elif item.received_quantity == 0 and req.status == 'COMPLETED' %}
-					(Received: 0 - Shortage)
-					{% endif %}
+                    {{ item.quantity_requested|int }} {{ item.unit.alt_unit }}
+                    {% if item.received_quantity > 0 %}
+                    (Received: {{ item.received_quantity|int }} {{ item.received_unit.alt_unit }})
+                    {% elif item.received_quantity == 0 and req.status == 'COMPLETED' %}
+                    (Received: 0 - Shortage)
+                    {% endif %}
                 </div>
                 {% endfor %}
             </div>
             {% if req.note %}
-            <div class="request-note">Note: {{ req.note }}</div>
+            <div style="font-size: 12px; color: #7A8F7A; margin-top: 8px; font-style: italic;">Note: {{ req.note }}</div>
             {% endif %}
         </div>
         {% endfor %}
     {% else %}
-        <p style="text-align: center; color: #999; padding: 40px;">No move requests found</p>
+        <div class="stock-card" style="text-align: center; cursor: default;">
+            <div class="stock-name" style="justify-content: center;">📋</div>
+            <div class="stock-qty">No move requests found</div>
+        </div>
     {% endif %}
 </div>
 
 <style>
-.request-card {
-    background: white;
-    border-radius: 12px;
-    padding: 16px;
-    margin-bottom: 12px;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-}
-
-.request-header {
-    display: flex;
-    justify-content: space-between;
-    margin-bottom: 8px;
-}
-
-.request-id {
-    font-weight: 600;
-    color: #007aff;
-}
-
-.request-date {
-    color: #666;
-    font-size: 12px;
-}
-
-.request-status {
-    font-size: 13px;
-    margin-bottom: 8px;
-}
-
-.status-pending {
-    color: #f59e0b;
-    font-weight: 500;
-}
-
-.status-completed {
-    color: #4caf50;
-    font-weight: 500;
-}
-
-.status-partial {
-    color: #ff9800;
-    font-weight: 500;
-}
-
-.status-rejected {
-    color: #ff3b30;
-    font-weight: 500;
-}
-
-.status-cancelled {
-    color: #999;
-    font-weight: 500;
-}
-
-.request-detail {
-    font-size: 13px;
-    color: #555;
-    margin-bottom: 8px;
-}
-
-.request-items {
-    background: #f9f9f9;
-    padding: 8px;
-    border-radius: 8px;
-    margin-top: 8px;
-    font-size: 13px;
-}
-
-.request-item {
-    padding: 2px 0;
-}
-
-.request-note {
-    font-size: 12px;
-    color: #888;
-    margin-top: 8px;
-    font-style: italic;
-}
-
-.request-actions {
-    display: flex;
-    gap: 12px;
-    margin-bottom: 12px;
-}
-
-.action-btn {
-    padding: 8px 16px;
-    border-radius: 8px;
-    font-size: 14px;
-    text-decoration: none;
-    display: inline-block;
-    text-align: center;
-    cursor: pointer;
-    border: none;
-    flex: 1;
-}
-
-.action-btn.edit {
-    background: #007aff;
-    color: white;
-}
-
-.action-btn.cancel {
-    background: #ff3b30;
-    color: white;
-}
-
-.flash {
-    background: #4caf50;
-    color: white;
-    padding: 12px;
-    border-radius: 8px;
-    margin-bottom: 16px;
-    text-align: center;
-}
+/* Status colors matching the sage/earthy palette */
+.status-pending { color: #F5A623; }
+.status-completed { color: #7C9F6E; }
+.status-partial { color: #F5A623; }
+.status-rejected { color: #D9534F; }
+.status-cancelled { color: #9AAE9A; }
+/* Additional hover/active states for buttons are handled by .btn in base.css */
 </style>
 
 <script>

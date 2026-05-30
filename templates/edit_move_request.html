@@ -1,11 +1,10 @@
 {% extends "base.html" %}
 
-{% block content %}
-<div class="header">
-    <h1>Edit Move Request #{{ move_request.id }}</h1>
-    <div class="subtitle">Status: {{ move_request.status }}</div>
-</div>
+{% block header_subtitle %}
+<div class="subtitle">Status: {{ move_request.status }}</div>
+{% endblock %}
 
+{% block content %}
 <div class="container">
     {% with messages = get_flashed_messages() %}
         {% if messages %}
@@ -15,6 +14,8 @@
         {% endif %}
     {% endwith %}
 
+    <h2 style="margin-bottom: 20px; font-size: 20px; font-weight: 600; color: #3E5A3A;">Edit Move Request #{{ move_request.id }}</h2>
+
     <form method="POST">
         <div class="form-group">
             <label>Request Date</label>
@@ -23,12 +24,12 @@
         
         <div class="form-group">
             <label>From Warehouse</label>
-            <input type="text" value="{{ move_request.from_warehouse.name }}" disabled style="background: #f5f5f5;">
+            <input type="text" value="{{ move_request.from_warehouse.name }}" readonly style="background: #F7FAF5;">
         </div>
         
         <div class="form-group">
             <label>To Warehouse</label>
-            <input type="text" value="{{ move_request.to_warehouse.name }}" disabled style="background: #f5f5f5;">
+            <input type="text" value="{{ move_request.to_warehouse.name }}" readonly style="background: #F7FAF5;">
         </div>
         
         <div class="item-table">
@@ -74,123 +75,81 @@
         </div>
         
         <button type="submit" class="btn">UPDATE REQUEST</button>
-        <a href="{{ url_for('my_move_requests') }}" class="btn-secondary" style="text-align: center; display: block; margin-top: 8px;">CANCEL</a>
+        <a href="{{ url_for('my_move_requests') }}" class="btn btn-secondary" style="text-align: center; display: block; margin-top: 8px; text-decoration: none;">CANCEL</a>
     </form>
 </div>
 
+<!-- Local style only for item-table structure (colors/backgrounds inherited from base/macro) -->
 <style>
-.form-group {
-    margin-bottom: 16px;
-}
-
-.form-group label {
-    display: block;
-    font-size: 14px;
-    font-weight: 500;
-    margin-bottom: 6px;
-    color: #333;
-}
-
-.form-group input, .form-group select, .form-group textarea {
-    width: 100%;
-    padding: 12px;
-    font-size: 16px;
-    border: 1px solid #ddd;
-    border-radius: 8px;
-    font-family: inherit;
-}
-
+/* These classes are already defined in _item_table.html but we keep the grid structure here 
+   because this template does not use the macro. We only keep the structural CSS, 
+   no color overrides. */
 .item-table {
     background: white;
-    border-radius: 12px;
+    border-radius: 16px;
     overflow: hidden;
-    margin: 16px 0;
+    margin: 20px 0;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
 }
-
 .item-table-header {
     display: grid;
     grid-template-columns: 1fr 70px 80px 80px;
     gap: 8px;
-    padding: 12px;
-    background: #f9f9f9;
+    padding: 12px 16px;
+    background: #F7FAF5;
     font-weight: 600;
     font-size: 13px;
-    border-bottom: 1px solid #e0e0e0;
+    color: #3E5A3A;
+    border-bottom: 1px solid #D6E0D6;
 }
-
 .item-row {
     display: grid;
     grid-template-columns: 1fr 70px 80px 80px;
     gap: 8px;
-    padding: 12px;
-    border-bottom: 1px solid #eee;
+    padding: 12px 16px;
+    border-bottom: 1px solid #E6EDE6;
     align-items: center;
 }
-
 .item-name {
     font-size: 14px;
     font-weight: 500;
+    color: #2E3B2B;
 }
-
 .item-stock {
     font-size: 13px;
-    color: #666;
+    color: #6B7F6B;
     font-family: monospace;
 }
-
 .unit-select, .qty-input {
     width: 100%;
     padding: 8px;
     font-size: 14px;
-    border: 1px solid #ddd;
-    border-radius: 6px;
+    border: 1px solid #D1D8D1;
+    border-radius: 10px;
+    background: white;
 }
-
 .qty-input {
     text-align: right;
 }
-
+.unit-select:focus, .qty-input:focus {
+    outline: none;
+    border-color: #7C9F6E;
+    box-shadow: 0 0 0 3px rgba(124,159,110,0.2);
+}
 .add-item-link {
     padding: 12px;
     text-align: center;
-    border-top: 1px solid #eee;
+    border-top: 1px solid #E6EDE6;
 }
-
 .add-item-link a {
-    color: #007aff;
+    color: #7C9F6E;
     text-decoration: none;
     font-size: 14px;
+    font-weight: 500;
 }
-
-.btn {
-    width: 100%;
-    padding: 14px;
-    font-size: 16px;
-    font-weight: 600;
-    border: none;
-    border-radius: 10px;
-    background: #007aff;
-    color: white;
-    cursor: pointer;
-    margin-top: 8px;
-}
-
-.btn-secondary {
-    background: #6c757d;
-    color: white;
-    padding: 14px;
-    border-radius: 10px;
-    font-weight: 600;
-    text-decoration: none;
-}
-
-.flash {
-    background: #4caf50;
-    color: white;
-    padding: 12px;
-    border-radius: 8px;
-    margin-bottom: 16px;
-    text-align: center;
+.add-item-link a:hover {
+    text-decoration: underline;
+    color: #5E7A4F;
 }
 </style>
 

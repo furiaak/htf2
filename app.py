@@ -874,7 +874,10 @@ def add_movement():
     if request.method == 'POST':
         date_str = request.form['date']
         direction = request.form['direction']
-        movement_type = request.form['movement_type']
+        movement_type = request.form.get('movement_type', '')
+        if not movement_type:
+            movement_type = 'transfer'  # or any default
+
         partner = request.form.get('partner', '')
         note = request.form.get('note', '')
         

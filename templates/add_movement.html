@@ -1,12 +1,11 @@
 {% extends "base.html" %}
 {% from "_item_table.html" import item_table %}
 
-{% block content %}
-<div class="header">
-    <h1>Add Movement</h1>
-    <div class="subtitle">{{ warehouse.name }}</div>
-</div>
+{% block header_subtitle %}
+<div class="subtitle">{{ warehouse.name }}</div>
+{% endblock %}
 
+{% block content %}
 <div class="container">
     {% with messages = get_flashed_messages() %}
         {% if messages %}
@@ -15,6 +14,8 @@
             {% endfor %}
         {% endif %}
     {% endwith %}
+
+    <h2 style="margin-bottom: 20px; font-size: 20px; font-weight: 600; color: #3E5A3A;">Add Movement</h2>
 
     <form method="POST">
         <div class="form-group">
@@ -25,17 +26,17 @@
         <div class="form-group">
             <label>Direction</label>
             <div class="radio-group">
-                <label style="color: green; display: flex; align-items: center; gap: 6px; cursor: pointer;">
+                <label>
                     <input type="radio" name="direction" value="IN" id="dir_in" checked>
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M12 5V19M12 19L5 12M12 19L19 12" stroke="green" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        <path d="M12 5V19M12 19L5 12M12 19L19 12" stroke="#7C9F6E" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                     </svg>
                     Masuk
                 </label>
-                <label style="color: red; display: flex; align-items: center; gap: 6px; cursor: pointer;">
+                <label>
                     <input type="radio" name="direction" value="OUT" id="dir_out">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M12 19V5M12 5L5 12M12 5L19 12" stroke="red" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        <path d="M12 19V5M12 5L5 12M12 5L19 12" stroke="#D9534F" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                     </svg>
                     Keluar
                 </label>
@@ -44,15 +45,15 @@
         
         <div class="form-group">
             <label>Movement Type</label>
-				<select name="movement_type" id="movement_type" >
-					<option value="" disabled {% if not movement_type %}selected{% endif %}>-- Select movement type --</option>
-					<option value="purchase" {% if movement_type == 'purchase' %}selected{% endif %}>Purchase</option>
-					<option value="transfer" {% if movement_type == 'transfer' %}selected{% endif %}>Transfer</option>
-					<option value="production" {% if movement_type == 'production' %}selected{% endif %}>Production</option>
-					<option value="waste" {% if movement_type == 'waste' %}selected{% endif %}>Waste</option>
-					<option value="vip" {% if movement_type == 'vip' %}selected{% endif %}>VIP</option>
-					<option value="adjustment" {% if movement_type == 'adjustment' %}selected{% endif %}>Adjustment</option>
-				</select>
+            <select name="movement_type" id="movement_type">
+                <option value="" disabled {% if not movement_type %}selected{% endif %}>-- Select movement type --</option>
+                <option value="purchase" {% if movement_type == 'purchase' %}selected{% endif %}>Purchase</option>
+                <option value="transfer" {% if movement_type == 'transfer' %}selected{% endif %}>Transfer</option>
+                <option value="production" {% if movement_type == 'production' %}selected{% endif %}>Production</option>
+                <option value="waste" {% if movement_type == 'waste' %}selected{% endif %}>Waste</option>
+                <option value="vip" {% if movement_type == 'vip' %}selected{% endif %}>VIP</option>
+                <option value="adjustment" {% if movement_type == 'adjustment' %}selected{% endif %}>Adjustment</option>
+            </select>
         </div>
         
         <div class="form-group">
@@ -70,71 +71,6 @@
         <button type="submit" class="btn">SUBMIT</button>
     </form>
 </div>
-
-<style>
-.form-group {
-    margin-bottom: 16px;
-}
-
-.form-group label {
-    display: block;
-    font-size: 14px;
-    font-weight: 500;
-    margin-bottom: 6px;
-    color: #333;
-}
-
-.form-group input, .form-group select, .form-group textarea {
-    width: 100%;
-    padding: 12px;
-    font-size: 16px;
-    border: 1px solid #ddd;
-    border-radius: 8px;
-    font-family: inherit;
-}
-
-.radio-group {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-
-.radio-group label {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    font-weight: normal;
-    margin-bottom: 0;
-    cursor: pointer;
-}
-
-.radio-group input {
-    width: auto;
-    margin: 0;
-}
-
-.btn {
-    width: 100%;
-    padding: 14px;
-    font-size: 16px;
-    font-weight: 600;
-    border: none;
-    border-radius: 10px;
-    background: #007aff;
-    color: white;
-    cursor: pointer;
-    margin-top: 8px;
-}
-
-.flash {
-    background: #4caf50;
-    color: white;
-    padding: 12px;
-    border-radius: 8px;
-    margin-bottom: 16px;
-    text-align: center;
-}
-</style>
 
 <script>
 const dirIn = document.getElementById('dir_in');

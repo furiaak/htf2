@@ -12,7 +12,7 @@
         }
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-            background: #f5f5f5;
+            background: #F6F9F4;
             display: flex;
             justify-content: center;
             align-items: center;
@@ -23,41 +23,56 @@
             max-width: 400px;
             width: 100%;
             background: white;
-            border-radius: 16px;
+            border-radius: 24px;
             padding: 32px 24px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            box-shadow: 0 8px 24px rgba(0,0,0,0.05);
+            border: 1px solid #E6EDE6;
+            text-align: center;
+        }
+        .logo-circle {
+            width: 64px;
+            height: 64px;
+            border-radius: 50%;
+            object-fit: contain;
+            margin-bottom: 16px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+            background: #FDFBF7;
         }
         h1 {
-            font-size: 24px;
+            font-size: 26px;
             margin-bottom: 8px;
-            text-align: center;
+            color: #3E5A3A;
+            font-weight: 600;
         }
         .subtitle {
-            text-align: center;
-            color: #666;
+            color: #6B7F6B;
             margin-bottom: 32px;
             font-size: 14px;
         }
         .form-group {
             margin-bottom: 20px;
+            text-align: left;
         }
         label {
             display: block;
             font-size: 14px;
             font-weight: 500;
             margin-bottom: 8px;
+            color: #3E5A3A;
         }
         input {
             width: 100%;
             padding: 14px;
             font-size: 16px;
-            border: 1px solid #ddd;
-            border-radius: 10px;
+            border: 1px solid #D1D8D1;
+            border-radius: 12px;
             font-family: inherit;
+            transition: all 0.2s;
         }
         input:focus {
             outline: none;
-            border-color: #007aff;
+            border-color: #7C9F6E;
+            box-shadow: 0 0 0 3px rgba(124,159,110,0.2);
         }
         .btn {
             width: 100%;
@@ -65,20 +80,22 @@
             font-size: 16px;
             font-weight: 600;
             border: none;
-            border-radius: 10px;
-            background: #007aff;
+            border-radius: 40px;
+            background: #7C9F6E;
             color: white;
             cursor: pointer;
             margin-top: 8px;
+            transition: all 0.2s ease;
         }
         .btn:active {
-            background: #005bb5;
+            background: #5E7A4F;
+            transform: scale(0.97);
         }
         .flash {
-            background: #ff3b30;
+            background: #D9534F;
             color: white;
             padding: 12px;
-            border-radius: 8px;
+            border-radius: 12px;
             margin-bottom: 20px;
             text-align: center;
             font-size: 14px;
@@ -87,8 +104,9 @@
 </head>
 <body>
     <div class="login-container">
+        <img src="{{ url_for('static', filename='logo.png') }}" class="logo-circle" alt="Dandy logo" onerror="this.style.display='none'">
         <h1>Inventory System</h1>
-        <div class="subtitle">Bakery Management</div>
+        <div class="subtitle">DANDYco Bakery Management</div>
         
         {% with messages = get_flashed_messages() %}
             {% if messages %}

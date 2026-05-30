@@ -1,13 +1,14 @@
 {% extends "base.html" %}
 
-{% block content %}
-<div class="header">
-    <h1>{{ ingredient.name }}</h1>
-    <div class="subtitle">Movement History</div>
-</div>
+{% block header_subtitle %}
+<div class="subtitle">Movement History</div>
+{% endblock %}
 
+{% block content %}
 <div class="container">
     <a href="{{ url_for('current_stock') }}" class="back-link">← Back to Stock</a>
+    
+    <h2 style="margin-bottom: 20px; font-size: 20px; font-weight: 600; color: #3E5A3A;">{{ ingredient.name }}</h2>
     
     <div class="history-table">
         <div class="history-row history-header">
@@ -31,7 +32,7 @@
         </div>
         {% else %}
         <div class="history-row">
-            <div colspan="3" style="text-align: center; color: #999;">No movements found</div>
+            <div colspan="3" style="text-align: center; color: #9AAE9A;">No movements found</div>
         </div>
         {% endfor %}
     </div>

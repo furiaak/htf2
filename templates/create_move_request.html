@@ -1,12 +1,11 @@
 {% extends "base.html" %}
 {% from "_item_table.html" import item_table %}
 
-{% block content %}
-<div class="header">
-    <h1>Create Move Request</h1>
-    <div class="subtitle">Request stock for {{ warehouse.name }}</div>
-</div>
+{% block header_subtitle %}
+<div class="subtitle">Request stock for {{ warehouse.name }}</div>
+{% endblock %}
 
+{% block content %}
 <div class="container">
     {% with messages = get_flashed_messages() %}
         {% if messages %}
@@ -15,6 +14,8 @@
             {% endfor %}
         {% endif %}
     {% endwith %}
+
+    <h2 style="margin-bottom: 20px; font-size: 20px; font-weight: 600; color: #3E5A3A;">Create Move Request</h2>
 
     <form method="GET" id="warehouseSelectForm">
         <div class="form-group">
@@ -38,17 +39,17 @@
             <input type="date" name="date" value="{{ today }}" required>
         </div>
         
-
-        
         {% if ingredients %}
             {{ item_table(ingredients, qty_label='Requested', show_unit_select=true, readonly=false) }}
         {% elif selected_warehouse_id %}
-            <div class="no-stock-message">
-                ⚠️ No items available in this warehouse
+            <div class="stock-card" style="text-align: center; cursor: default;">
+                <div class="stock-name" style="justify-content: center;">⚠️</div>
+                <div class="stock-qty">No items available in this warehouse</div>
             </div>
         {% else %}
-            <div class="no-stock-message">
-                Please select a warehouse above
+            <div class="stock-card" style="text-align: center; cursor: default;">
+                <div class="stock-name" style="justify-content: center;">📦</div>
+                <div class="stock-qty">Please select a warehouse above</div>
             </div>
         {% endif %}
         
@@ -63,60 +64,7 @@
     </form>
 </div>
 
-<style>
-.form-group {
-    margin-bottom: 16px;
-}
-
-.form-group label {
-    display: block;
-    font-size: 14px;
-    font-weight: 500;
-    margin-bottom: 6px;
-    color: #333;
-}
-
-.form-group input, .form-group select, .form-group textarea {
-    width: 100%;
-    padding: 12px;
-    font-size: 16px;
-    border: 1px solid #ddd;
-    border-radius: 8px;
-    font-family: inherit;
-}
-
-.btn {
-    width: 100%;
-    padding: 14px;
-    font-size: 16px;
-    font-weight: 600;
-    border: none;
-    border-radius: 10px;
-    background: #007aff;
-    color: white;
-    cursor: pointer;
-    margin-top: 8px;
-}
-
-.flash {
-    background: #4caf50;
-    color: white;
-    padding: 12px;
-    border-radius: 8px;
-    margin-bottom: 16px;
-    text-align: center;
-}
-
-.no-stock-message {
-    text-align: center;
-    padding: 40px;
-    color: #999;
-    background: white;
-    border-radius: 12px;
-    margin: 16px 0;
-}
-</style>
-
+<!-- Minimal local style for backward compatibility of script (no visual overrides) -->
 <script>
 function updateMovementType(value) {
     const urlParams = new URLSearchParams(window.location.search);

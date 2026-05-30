@@ -452,7 +452,7 @@ def pending_move_requests():
     if 'user_id' not in session:
         return redirect(url_for('login'))
     
-    if session['role'] != 'WH_PIC':
+    if session['role'] not in ['WH_PIC', 'ST_MGR']:
         flash('Only warehouse PIC can view pending requests')
         return redirect(url_for('current_stock'))
     

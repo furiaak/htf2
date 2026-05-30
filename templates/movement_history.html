@@ -19,7 +19,7 @@
         {% for m in movements %}
         <div class="history-row">
             <div>{{ m.date.strftime('%Y-%m-%d') }}</div>
-            <div>{{ m.quantity|int }} {{ m.unit.abbreviation }}</div>
+            <div>{{ m.quantity|int }} {{ m.unit.alt_unit }}</div>
             <div>
                 {{ m.direction }}: 
                 {% if m.note %}

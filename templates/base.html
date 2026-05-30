@@ -255,14 +255,14 @@
     
     {% if session.user_id %}
     <div class="bottom-nav">
-        <a href="{{ url_for('current_stock') }}" class="nav-item {% if request.endpoint == 'current_stock' %}active{% endif %}">📊 Stock</a>
+        <a href="{{ url_for('current_stock') }}" class="nav-item {% if request.endpoint == 'current_stock' %}active{% endif %}">📊 Stok</a>
         
         {% if session.role == 'ST_MGR' or session.role == 'ST_REQ' %}
-        <a href="{{ url_for('create_request') }}" class="nav-item {% if request.endpoint == 'create_request' %}active{% endif %}">📝 Request</a>
+        <a href="{{ url_for('create_request') }}" class="nav-item {% if request.endpoint == 'create_request' %}active{% endif %}">📝 Minta</a>
         {% endif %}
         
         {% if session.role == 'WH_PIC' or session.role == 'ST_MGR' %}
-        <a href="{{ url_for('pending_move_requests') }}" class="nav-item {% if request.endpoint == 'pending_move_requests' %}active{% endif %}">⏳ Pending</a>
+        <a href="{{ url_for('pending_move_requests') }}" class="nav-item {% if request.endpoint == 'pending_move_requests' %}active{% endif %}">⏳ OUT?</a>
         {% endif %}
         
         {% if session.role == 'ST_MGR' or session.role == 'WH_PIC' %}
@@ -270,13 +270,17 @@
         {% endif %}
         
         {% if session.role == 'ST_MGR' or session.role == 'ST_REQ' %}
-        <a href="{{ url_for('my_move_requests') }}" class="nav-item {% if request.endpoint == 'my_move_requests' %}active{% endif %}">📋 My Moves</a>
+        <a href="{{ url_for('my_move_requests') }}" class="nav-item {% if request.endpoint == 'my_move_requests' %}active{% endif %}">📋 HISTORY</a>
         {% endif %}
         
         {% if session.role == 'ADMIN' %}
         <a href="{{ url_for('admin_ingredients') }}" class="nav-item {% if request.endpoint == 'admin_ingredients' %}active{% endif %}">⚙️ Admin</a>
         {% endif %}
-        
+
+        {% if session.role in ['WH_PIC', 'ADMIN'] %}
+        <a href="{{ url_for('pending_receipts') }}" class="nav-item {% if request.endpoint == 'pending_receipts' %}active{% endif %}">📋 IN?</a>
+        {% endif %}
+ 
         <a href="{{ url_for('logout') }}" class="nav-item">🚪 Logout</a>
     </div>
     {% endif %}

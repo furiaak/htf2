@@ -44,10 +44,12 @@
                 {% for item in req.items %}
                 <div class="request-item">
                     {{ item.ingredient.name }}: 
-                    {{ item.quantity_requested|int }} {{ item.unit.alt_unit }}
-                    {% if item.quantity_fulfilled > 0 %}
-                    (Fulfilled: {{ item.quantity_fulfilled|int }})
-                    {% endif %}
+					{{ item.quantity_requested|int }} {{ item.unit.alt_unit }}
+					{% if item.received_quantity > 0 %}
+					(Received: {{ item.received_quantity|int }} {{ item.received_unit.alt_unit }})
+					{% elif item.received_quantity == 0 and req.status == 'COMPLETED' %}
+					(Received: 0 - Shortage)
+					{% endif %}
                 </div>
                 {% endfor %}
             </div>

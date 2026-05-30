@@ -35,17 +35,15 @@
                 <div class="item-name">{{ item.ingredient.name }}</div>
                 <div class="item-requested">{{ item.quantity_requested|int }} {{ item.unit.alt_unit }}</div>
                 <div class="item-unit">
-                    <select name="unit_{{ item.ingredient_id }}" class="unit-select">
-                        {% for unit in item.ingredient.units|sort(attribute='rank', reverse=True) %}
-                        <option value="{{ unit.id }}" 
-                            data-conversion="{{ unit.conversion_to_base }}"
-                            {% if unit.id == item.unit_id %}selected{% endif %}
-                            {% if move_request.movement_type == 'transfer' and unit.rank == loop.revindex0 + 1 %}selected{% endif %}
-                            {% if move_request.movement_type != 'transfer' and unit.rank == 1 %}selected{% endif %}>
-                            {{ unit.alt_unit }}
-                        </option>
-                        {% endfor %}
-                    </select>
+					<select name="unit_{{ item.ingredient_id }}" class="unit-select">
+						{% for unit in item.ingredient.units|sort(attribute='rank', reverse=True) %}
+						<option value="{{ unit.id }}" 
+							data-conversion="{{ unit.conversion_to_base }}"
+							{% if unit.id == item.unit_id %}selected{% endif %}>
+							{{ unit.alt_unit }}
+						</option>
+						{% endfor %}
+					</select>
                 </div>
                 <div class="item-qty">
                     <input type="number" 

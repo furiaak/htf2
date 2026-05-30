@@ -1,7 +1,7 @@
 from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import func
-from datetime import datetime, date
+from datetime import datetime, date, timezone
 from werkzeug.security import generate_password_hash, check_password_hash
 import os
 
@@ -101,6 +101,7 @@ class Movement(db.Model):
     created_by_user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     move_request_id = db.Column(db.Integer, db.ForeignKey('move_requests.id'))  # ADD THIS LINE
+    status = db.Column(db.String(20), default='completed')
     
     # Relationships
     ingredient = db.relationship('Ingredient')
@@ -132,7 +133,6 @@ class MoveRequestItem(db.Model):
     request_id = db.Column(db.Integer, db.ForeignKey('move_requests.id'), nullable=False)
     ingredient_id = db.Column(db.Integer, db.ForeignKey('ingredients.id'), nullable=False)
     quantity_requested = db.Column(db.Float, nullable=False)
-    quantity_fulfilled = db.Column(db.Float, default=0)
     unit_id = db.Column(db.Integer, db.ForeignKey('units.id'), nullable=False)
     
     # Relationships
@@ -330,8 +330,12 @@ def fulfill_move_request(request_id):
                 
                 if actual_qty > 0:
                     any_fulfilled = True
-                    item.quantity_fulfilled = actual_qty
-                    item.unit_id = unit_id
+                    # Explicit update instead of attribute assignment
+                    db.session.query(MoveRequestItem).filter(
+                        MoveRequestItem.id == item.id
+                    ).update({
+                        'unit_id': unit_id
+                    })
                     
                     # Get unit conversion
                     unit = Unit.query.get(unit_id)
@@ -370,7 +374,8 @@ def fulfill_move_request(request_id):
                         note=f"Move Request #{request_id} fulfillment. {fulfillment_note}",
                         origin_destination=f"To {move_request.to_warehouse.name}",
                         created_by_user_id=session['user_id'],
-                        move_request_id=request_id
+                        move_request_id=request_id,
+                        status='completed' 
                     )
                     db.session.add(out_movement)
                     
@@ -387,7 +392,8 @@ def fulfill_move_request(request_id):
                         note=f"Move Request #{request_id} fulfillment. {fulfillment_note}",
                         origin_destination=f"From {move_request.from_warehouse.name}",
                         created_by_user_id=session['user_id'],
-                        move_request_id=request_id
+                        move_request_id=request_id,
+                        status='pending'
                     )
                     db.session.add(in_movement)
                     
@@ -395,9 +401,9 @@ def fulfill_move_request(request_id):
                     # Source warehouse (OUT)
                     if from_balance:
                         from_balance.balance_base -= quantity_base
-                        from_balance.last_updated = datetime.utcnow()
+                        from_balance.last_updated = datetime.now(timezone.utc)
                     
-                    # Destination warehouse (IN)
+                    # Destination warehouse (IN) - stock NOT added yet, pending receipt confirmation
                     to_balance = InventoryBalance.query.filter_by(
                         warehouse_id=move_request.to_warehouse_id,
                         ingredient_id=item.ingredient_id
@@ -409,8 +415,8 @@ def fulfill_move_request(request_id):
                             balance_base=0
                         )
                         db.session.add(to_balance)
-                    to_balance.balance_base += quantity_base
-                    to_balance.last_updated = datetime.utcnow()
+                    # DO NOT add stock here — remove the line that adds quantity_base
+                    to_balance.last_updated = datetime.now(timezone.utc)
                     
                 elif item.quantity_requested > 0:
                     all_fulfilled = False
@@ -569,7 +575,6 @@ def create_request():
                 request_id=new_request.id,
                 ingredient_id=item['ingredient_id'],
                 quantity_requested=item['quantity'],
-                quantity_fulfilled=0,
                 unit_id=item['unit_id']
             )
             db.session.add(request_item)
@@ -659,8 +664,9 @@ def current_stock():
             ).join(
                 Ingredient, InventoryBalance.ingredient_id == Ingredient.id
             ).filter(
-                InventoryBalance.warehouse_id == wh.id
-            ).all()
+                InventoryBalance.warehouse_id == wh.id,
+                InventoryBalance.balance_base > 0
+            ).order_by(Ingredient.name.asc()).all()
             
             stock_list = []
             for balance, ingredient in balances:
@@ -687,8 +693,9 @@ def current_stock():
     ).join(
         Ingredient, InventoryBalance.ingredient_id == Ingredient.id
     ).filter(
-        InventoryBalance.warehouse_id == warehouse_id
-    ).all()
+        InventoryBalance.warehouse_id == warehouse_id,
+        InventoryBalance.balance_base > 0
+    ).order_by(Ingredient.name.asc()).all()
     
     stock_list = []
     for balance, ingredient in results:
@@ -711,9 +718,10 @@ def movement_history(ingredient_id):
         return redirect(url_for('login'))
     warehouse_id = session['warehouse_id']
     ingredient = Ingredient.query.get_or_404(ingredient_id)
-    movements = Movement.query.filter_by(
-        warehouse_id=warehouse_id,
-        ingredient_id=ingredient_id
+    movements = Movement.query.filter(
+        Movement.warehouse_id == warehouse_id,
+        Movement.ingredient_id == ingredient_id,
+        Movement.status == 'completed'  # Only show completed movements
     ).order_by(Movement.date.desc(), Movement.created_at.desc()).all()
     return render_template('movement_history.html', movements=movements, ingredient=ingredient)
 
@@ -821,7 +829,8 @@ def add_movement():
                 date=movement_date,
                 note=note,
                 origin_destination=partner,
-                created_by_user_id=user_id
+                created_by_user_id=user_id,
+                status='completed'
             )
             db.session.add(movement)
             
@@ -843,7 +852,7 @@ def add_movement():
             else:
                 balance.balance_base -= quantity_base
             
-            balance.last_updated = datetime.utcnow()
+            balance.last_updated = datetime.now(timezone.utc)
         
         db.session.commit()
         flash(f'Recorded {len(items)} item(s) successfully')
@@ -913,6 +922,20 @@ def my_move_requests():
     my_requests = MoveRequest.query.filter_by(
         requested_by_user_id=user_id
     ).order_by(MoveRequest.request_date.desc(), MoveRequest.id.desc()).all()
+    
+    # For each request, enrich items with actual received quantity from movements
+    for req in my_requests:
+        for item in req.items:
+            # Get the actual received quantity from IN movement
+            received_movement = Movement.query.filter(
+                Movement.move_request_id == req.id,
+                Movement.ingredient_id == item.ingredient_id,
+                Movement.direction == 'IN',
+                Movement.status == 'completed'
+            ).first()
+            
+            item.received_quantity = received_movement.quantity if received_movement else 0
+            item.received_unit = received_movement.unit if received_movement else item.unit
     
     return render_template('my_move_requests.html', requests=my_requests)
 
@@ -995,7 +1018,6 @@ def edit_move_request(request_id):
                 request_id=move_request.id,
                 ingredient_id=item['ingredient_id'],
                 quantity_requested=item['quantity'],
-                quantity_fulfilled=0,
                 unit_id=item['unit_id']
             )
             db.session.add(request_item)
@@ -1059,6 +1081,179 @@ def cancel_move_request(request_id):
     db.session.commit()
     
     return jsonify({'success': True, 'message': 'Request cancelled'})
+
+
+# ========== RECEIPT CONFIRMATION ROUTES ==========
+
+@app.route('/receipts/pending')
+def pending_receipts():
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+    
+    # Only WH_PIC can confirm receipts
+    if session['role'] != 'WH_PIC':
+        flash('Only warehouse PIC can confirm receipts')
+        return redirect(url_for('current_stock'))
+    
+    warehouse_id = session['warehouse_id']
+    
+    # Get pending IN movements for THIS warehouse only
+    pending_movements = Movement.query.filter(
+        Movement.direction == 'IN',
+        Movement.status == 'pending',
+        Movement.warehouse_id == warehouse_id
+    ).order_by(Movement.date.desc(), Movement.created_at.desc()).all()
+    
+    # Group by move_request_id, skip orphaned
+    grouped = {}
+    for mov in pending_movements:
+        if not mov.move_request_id:
+            continue
+        req_id = mov.move_request_id
+        if req_id not in grouped:
+            move_request = MoveRequest.query.get(req_id)
+            if not move_request:
+                continue
+            grouped[req_id] = {
+                'move_request': move_request,
+                'movements': []
+            }
+        grouped[req_id]['movements'].append(mov)
+    
+    return render_template('pending_receipts.html', groups=grouped.values())
+
+
+@app.route('/receipt/confirm', methods=['POST'])
+def confirm_receipt():
+    if 'user_id' not in session:
+        flash('Not logged in')
+        return redirect(url_for('login'))
+    
+    # Only WH_PIC can confirm receipts
+    if session['role'] != 'WH_PIC':
+        flash('Only warehouse PIC can confirm receipts')
+        return redirect(url_for('current_stock'))
+    
+    move_request_id = request.form.get('move_request_id', type=int)
+    note = request.form.get('note', '')
+    
+    # Get all pending IN movements for this move request
+    movements = Movement.query.filter(
+        Movement.move_request_id == move_request_id,
+        Movement.direction == 'IN',
+        Movement.status == 'pending'
+    ).all()
+    
+    if not movements:
+        flash('No pending movements found for this request')
+        return redirect(url_for('pending_receipts'))
+    
+    # Verify warehouse matches the logged-in WH_PIC's warehouse
+    if movements[0].warehouse_id != session['warehouse_id']:
+        flash('You can only confirm receipts for your warehouse')
+        return redirect(url_for('pending_receipts'))
+    
+    try:
+        for mov in movements:
+            # Store original quantity for shortage calculation
+            original_quantity = mov.quantity
+            original_unit_id = mov.unit_id
+            
+            # Get submitted quantity and unit
+            qty_key = f'qty_{mov.ingredient_id}'
+            unit_key = f'unit_{mov.ingredient_id}'
+            
+            confirmed_quantity = float(request.form.get(qty_key, original_quantity))
+            
+            if confirmed_quantity < 0:
+                flash(f'Quantity cannot be negative for {mov.ingredient.name}')
+                return redirect(url_for('pending_receipts'))
+            
+            if confirmed_quantity > original_quantity:
+                flash(f'Cannot confirm more than expected for {mov.ingredient.name}. Expected: {original_quantity} {mov.unit.alt_unit}')
+                return redirect(url_for('pending_receipts'))
+            
+            # Get unit (might have been changed)
+            unit_id = int(request.form.get(unit_key, original_unit_id))
+            unit = db.session.get(Unit, unit_id)
+            
+            # Calculate received quantity in base unit
+            received_base = confirmed_quantity * unit.conversion_to_base
+            
+            # Add stock to destination warehouse
+            balance = InventoryBalance.query.filter_by(
+                warehouse_id=mov.warehouse_id,
+                ingredient_id=mov.ingredient_id
+            ).first()
+            
+            if not balance:
+                balance = InventoryBalance(
+                    warehouse_id=mov.warehouse_id,
+                    ingredient_id=mov.ingredient_id,
+                    balance_base=0
+                )
+                db.session.add(balance)
+            
+            balance.balance_base += received_base
+            balance.last_updated = datetime.utcnow()
+            
+            # Update movement with actual received quantity
+            mov.quantity = confirmed_quantity
+            mov.quantity_base = received_base
+            mov.unit_id = unit_id
+            
+            # Record shortage if partial
+            if abs(confirmed_quantity - original_quantity) > 0.001:
+                discrepancy = original_quantity - confirmed_quantity
+                mov.note = f"{mov.note or ''} [SHORTAGE: {discrepancy} {unit.alt_unit}]".strip()
+            
+            # Update movement status
+            mov.status = 'completed'
+            mov.confirmed_by_user_id = session['user_id']
+            mov.confirmed_at = datetime.utcnow()
+            
+            # Add global note if provided
+            if note:
+                mov.note = f"{mov.note or ''} {note}".strip()
+        
+        db.session.commit()
+        flash(f'Receipt confirmed for {len(movements)} item(s)')
+        
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error: {str(e)}')
+    
+    return redirect(url_for('pending_receipts'))
+
+
+@app.route('/receipt/reject/<int:movement_id>', methods=['POST'])
+def reject_receipt(movement_id):
+    if 'user_id' not in session:
+        flash('Not logged in')
+        return redirect(url_for('login'))
+    
+    if session['role'] not in ['ST_MGR', 'ADMIN']:
+        flash('Permission denied')
+        return redirect(url_for('current_stock'))
+    
+    movement = Movement.query.get_or_404(movement_id)
+    
+    if movement.status != 'pending':
+        flash('Movement already processed')
+        return redirect(url_for('pending_receipts'))
+    
+    reason = request.form.get('reject_reason', 'No reason provided')
+    unit = Unit.query.get(movement.unit_id)
+    
+    movement.status = 'rejected'
+    movement.confirmed_by_user_id = session['user_id']
+    movement.confirmed_at = datetime.now(timezone.utc)
+    movement.note = f"{movement.note or ''} [REJECTED: {reason}]".strip()
+    
+    db.session.commit()
+    
+    flash(f'Receipt rejected for {movement.ingredient.name} ({movement.quantity} {unit.alt_unit})')
+    return redirect(url_for('pending_receipts'))
 
 
 # ========== ADMIN ROUTES ==========

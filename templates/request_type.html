@@ -13,7 +13,11 @@
         <div class="option-title">Transfer dari orang lain ke saya</div>
         <div class="option-desc">Saya butuh stok dari gudang lain / toko</div>
     </div>
-    
+	<div class="option-card" onclick="location.href='{{ url_for('create_request', type='production') }}'">
+		<div class="option-icon">🏭</div>
+		<div class="option-title">Produksi / Penggunaan Internal</div>
+		<div class="option-desc">Saya butuh stok untuk produksi</div>
+	</div>    
     <div class="option-card" onclick="location.href='{{ url_for('create_request', type='outgoing') }}'">
         <div class="option-icon">📤</div>
         <div class="option-title">Transfer dari saya ke orang lain</div>

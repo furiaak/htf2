@@ -19,10 +19,13 @@
     {% if requests %}
         {% for req in requests %}
         <div class="stock-card" style="cursor: default; padding: 16px;">
-            <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
-                <span style="font-weight: 600; color: #7C9F6E;">Move Request #{{ req.id }}</span>
-                <span style="color: #6B7F6B; font-size: 12px;">{{ req.request_date.strftime('%Y-%m-%d') }}</span>
-            </div>
+			<div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+				<span style="font-weight: 600; color: #7C9F6E;">
+					Move Request #{{ req.id }} 
+					({{ req.movement_type|capitalize }})
+				</span>
+				<span style="color: #6B7F6B; font-size: 12px;">{{ req.request_date.strftime('%Y-%m-%d') }}</span>
+			</div>
             
             {% if req.status == 'PENDING' %}
             <div style="display: flex; gap: 12px; margin-bottom: 12px;">

@@ -360,7 +360,7 @@ def fulfill_move_request(request_id):
                     
                     # Use movement_type from the request
                     movement_type = move_request.movement_type
-                    
+                    is_own_production = (move_request.movement_type == 'production' and move_request.from_warehouse_id == move_request.requested_by.warehouse_id)
                     # Create OUT movement from source warehouse
                     out_movement = Movement(
                         warehouse_id=move_request.from_warehouse_id,
@@ -379,23 +379,27 @@ def fulfill_move_request(request_id):
                     )
                     db.session.add(out_movement)
                     
-                    # Create IN movement to destination warehouse
-                    in_movement = Movement(
-                        warehouse_id=move_request.to_warehouse_id,
-                        ingredient_id=item.ingredient_id,
-                        direction='IN',
-                        movement_type=movement_type,
-                        quantity=actual_qty,
-                        unit_id=unit_id,
-                        quantity_base=quantity_base,
-                        date=fulfillment_date,
-                        note=f"Move Request #{request_id} fulfillment. {fulfillment_note}",
-                        origin_destination=f"From {move_request.from_warehouse.name}",
-                        created_by_user_id=session['user_id'],
-                        move_request_id=request_id,
-                        status='pending'
-                    )
-                    db.session.add(in_movement)
+                    if not is_own_production:
+                        # Create IN movement as pending (for case 3b or normal transfer)
+                        in_movement = Movement(
+                            warehouse_id=move_request.to_warehouse_id,
+                            ingredient_id=item.ingredient_id,
+                            direction='IN',
+                            movement_type=move_request.movement_type,  # 'production'
+                            quantity=actual_qty,
+                            unit_id=unit_id,
+                            quantity_base=quantity_base,
+                            date=fulfillment_date,
+                            note=f"Move Request #{request_id} fulfillment. {fulfillment_note}",
+                            origin_destination=f"From {move_request.from_warehouse.name}",
+                            created_by_user_id=session['user_id'],
+                            move_request_id=request_id,
+                            status='pending'
+                        )
+                        db.session.add(in_movement)
+                    else:
+                        # For own production, no IN movement; request will be completed after all items
+                        pass
                     
                     # Update inventory balances
                     # Source warehouse (OUT)
@@ -422,7 +426,9 @@ def fulfill_move_request(request_id):
                     all_fulfilled = False
             
             # Update request status
-            if all_fulfilled and any_fulfilled:
+            if is_own_production and all_fulfilled:
+                move_request.status = 'COMPLETED'
+            elif all_fulfilled and any_fulfilled:
                 move_request.status = 'IN_TRANSIT'
             elif any_fulfilled:
                 move_request.status = 'PARTIAL'
@@ -490,25 +496,35 @@ def create_request(type):
     if request.method == 'POST':
         date_str = request.form['date']
         note = request.form.get('note', '')
+       
         movement_type = request.form.get('movement_type', 'transfer')
         if type in ['incoming', 'outgoing']:
             movement_type = 'transfer'
-        
+        elif type == 'production':
+            movement_type = 'production'
+
         if type == 'incoming':
-            # From others to me
             to_warehouse_id = my_warehouse_id
             try:
                 from_warehouse_id = int(request.form['from_warehouse_id'])
             except (ValueError, TypeError):
                 flash('Please select a source warehouse')
                 return redirect(url_for('create_request', type=type))
-        else:  # outgoing
-            # From me to others
+
+        elif type == 'outgoing':
             from_warehouse_id = my_warehouse_id
             try:
                 to_warehouse_id = int(request.form['to_warehouse_id'])
             except (ValueError, TypeError):
                 flash('Please select a destination warehouse')
+                return redirect(url_for('create_request', type=type))
+
+        else:  # production
+            to_warehouse_id = my_warehouse_id
+            try:
+                from_warehouse_id = int(request.form['from_warehouse_id'])
+            except (ValueError, TypeError):
+                flash('Please select a source warehouse for production')
                 return redirect(url_for('create_request', type=type))
         
         # Validate date
@@ -698,6 +714,55 @@ def create_request(type):
                               today=today,
                               movement_type='transfer',
                               request_type=type)
+
+
+    elif type == 'production':
+        # Show all warehouses as possible sources
+        warehouses = Warehouse.query.all()
+        selected_warehouse_id = request.args.get('from_warehouse_id', type=int)
+        if not selected_warehouse_id and warehouses:
+            selected_warehouse_id = warehouses[0].id
+        
+        ingredients_data = []
+        if selected_warehouse_id:
+            # Get all approved ingredients
+            ingredients = Ingredient.query.filter_by(is_approved=True).order_by(Ingredient.name).all()
+            for ing in ingredients:
+                # Check stock in the selected source warehouse
+                balance = InventoryBalance.query.filter_by(
+                    warehouse_id=selected_warehouse_id,
+                    ingredient_id=ing.id
+                ).first()
+                current_stock = balance.balance_base if balance else 0
+                if current_stock <= 0:
+                    continue  # Only show items with stock > 0
+                
+                # Prepare units for this ingredient
+                units = []
+                for unit in ing.units:
+                    units.append({
+                        'id': unit.id,
+                        'alt_unit': unit.alt_unit,
+                        'rank': unit.rank,
+                        'conversion_to_base': unit.conversion_to_base
+                    })
+                default_unit = max(units, key=lambda u: u['rank']) if units else None
+                ingredients_data.append({
+                    'id': ing.id,
+                    'name': ing.name,
+                    'units': units,
+                    'default_unit_id': default_unit['id'] if default_unit else None,
+                    'display_stock': format_quantity(current_stock, ing)
+                })
+        
+        return render_template('create_production_request.html',
+                              ingredients=ingredients_data,
+                              warehouses=warehouses,
+                              selected_warehouse_id=selected_warehouse_id,
+                              warehouse=my_warehouse,
+                              today=today,
+                              request_type=type)
+
     
     else:  # outgoing
         # Show other warehouses as destination
@@ -1326,29 +1391,39 @@ def confirm_receipt():
             # Calculate received quantity in base unit
             received_base = confirmed_quantity * unit.conversion_to_base
             
-            # Add stock to destination warehouse
-            balance = InventoryBalance.query.filter_by(
-                warehouse_id=mov.warehouse_id,
-                ingredient_id=mov.ingredient_id
-            ).first()
-            
-            if not balance:
-                balance = InventoryBalance(
+            # ========== MODIFICATION FOR PRODUCTION MOVEMENTS ==========
+            # If this is a production movement (case 3b), do NOT add stock to warehouse
+            if mov.movement_type != 'production':
+                # Add stock to destination warehouse (normal transfer or incoming)
+                balance = InventoryBalance.query.filter_by(
                     warehouse_id=mov.warehouse_id,
-                    ingredient_id=mov.ingredient_id,
-                    balance_base=0
-                )
-                db.session.add(balance)
-            
-            balance.balance_base += received_base
-            balance.last_updated = datetime.utcnow()
+                    ingredient_id=mov.ingredient_id
+                ).first()
+                
+                if not balance:
+                    balance = InventoryBalance(
+                        warehouse_id=mov.warehouse_id,
+                        ingredient_id=mov.ingredient_id,
+                        balance_base=0
+                    )
+                    db.session.add(balance)
+                
+                balance.balance_base += received_base
+                balance.last_updated = datetime.utcnow()
+            else:
+                # Production receipt: no stock addition, just log in note
+                if note:
+                    mov.note = f"{mov.note or ''} [PRODUCTION RECEIPT] {note}".strip()
+                else:
+                    mov.note = f"{mov.note or ''} [PRODUCTION RECEIPT]".strip()
+            # ========== END MODIFICATION ==========
             
             # Update movement with actual received quantity
             mov.quantity = confirmed_quantity
             mov.quantity_base = received_base
             mov.unit_id = unit_id
             
-            # Record shortage if partial
+            # Record shortage if partial (only for non-production? but still record)
             if abs(confirmed_quantity - original_quantity) > 0.001:
                 discrepancy = original_quantity - confirmed_quantity
                 mov.note = f"{mov.note or ''} [SHORTAGE: {discrepancy} {unit.alt_unit}]".strip()
@@ -1358,8 +1433,8 @@ def confirm_receipt():
             mov.confirmed_by_user_id = session['user_id']
             mov.confirmed_at = datetime.utcnow()
             
-            # Add global note if provided
-            if note:
+            # Add global note if provided (already handled above for production)
+            if note and mov.movement_type != 'production':
                 mov.note = f"{mov.note or ''} {note}".strip()
 
         move_request = MoveRequest.query.get(move_request_id)

@@ -10,18 +10,18 @@
 
     <div class="option-card" onclick="location.href='{{ url_for('create_request', type='incoming') }}'">
         <div class="option-icon">📥</div>
-        <div class="option-title">Transfer dari orang lain ke saya</div>
-        <div class="option-desc">Saya butuh stok dari gudang lain / toko</div>
+        <div class="option-title">Transfer Gudang lain ke Gudang saya</div>
+        <div class="option-desc">Pindah dari gudang lain ke gudang saya</div>
     </div>
 	<div class="option-card" onclick="location.href='{{ url_for('create_request', type='production') }}'">
 		<div class="option-icon">🏭</div>
-		<div class="option-title">Produksi / Penggunaan Internal</div>
-		<div class="option-desc">Saya butuh stok untuk produksi</div>
+		<div class="option-title">Transfer Gudang ke Produksi</div>
+		<div class="option-desc">Pindah dari gudang untuk produksi</div>
 	</div>    
     <div class="option-card" onclick="location.href='{{ url_for('create_request', type='outgoing') }}'">
         <div class="option-icon">📤</div>
-        <div class="option-title">Transfer dari saya ke orang lain</div>
-        <div class="option-desc">Saya ingin mengirim stok ke gudang lain / toko</div>
+        <div class="option-title">Transfer dari saya ke Gudang lain</div>
+        <div class="option-desc">Nitip</div>
     </div>
 </div>
 

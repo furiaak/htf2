@@ -15,7 +15,7 @@
         {% endif %}
     {% endwith %}
 
-    <h2 style="margin-bottom: 20px; font-size: 20px; font-weight: 600; color: #3E5A3A;">Add Movement</h2>
+    <h2 style="margin-bottom: 20px; font-size: 20px; font-weight: 600; color: #3E5A3A;">Tambah Pergerakan Stok</h2>
 
     <form method="POST">
         <div class="form-group">
@@ -44,15 +44,15 @@
         </div>
         
         <div class="form-group">
-            <label>Movement Type</label>
+            <label>Jenis Pergerakan</label>
             <select name="movement_type" id="movement_type">
-                <option value="" disabled {% if not movement_type %}selected{% endif %}>-- Select movement type --</option>
-                <option value="purchase" {% if movement_type == 'purchase' %}selected{% endif %}>Purchase</option>
+                <option value="" disabled {% if not movement_type %}selected{% endif %}>-- Pilih jenis pergerakan --</option>
+                <option value="purchase" {% if movement_type == 'purchase' %}selected{% endif %}>Pembelian</option>
                 <option value="transfer" {% if movement_type == 'transfer' %}selected{% endif %}>Transfer</option>
-                <option value="production" {% if movement_type == 'production' %}selected{% endif %}>Production</option>
+                <option value="production" {% if movement_type == 'production' %}selected{% endif %}>Produksi</option>
                 <option value="waste" {% if movement_type == 'waste' %}selected{% endif %}>Waste</option>
                 <option value="vip" {% if movement_type == 'vip' %}selected{% endif %}>VIP</option>
-                <option value="adjustment" {% if movement_type == 'adjustment' %}selected{% endif %}>Adjustment</option>
+                <option value="adjustment" {% if movement_type == 'adjustment' %}selected{% endif %}>Penyesuaian</option>
             </select>
         </div>
         

@@ -1548,7 +1548,7 @@ def admin_add_unit():
         flash('Conversion rate must be greater than 0')
         return redirect(url_for('admin_ingredients'))
 
-    if conversion > 10000:
+    if conversion > 100000:
         flash('Conversion rate seems too high. Please verify.')
         return redirect(url_for('admin_ingredients'))
     

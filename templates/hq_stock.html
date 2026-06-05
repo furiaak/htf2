@@ -6,7 +6,10 @@
 
 {% block content %}
 <div class="container">
-    <h2 style="margin-bottom: 20px; font-size: 20px; font-weight: 600; color: #3E5A3A;">HQ Stock Overview</h2>
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+        <h2 style="margin: 0; font-size: 20px; font-weight: 600; color: #3E5A3A;">HQ Stock Overview</h2>
+        <a href="{{ url_for('admin_stock_limits') }}" style="background-color: #7C9F6E; color: white; padding: 4px 12px; border-radius: 20px; text-decoration: none; font-size: 13px; font-weight: 500;">Set Limit</a>
+	</div>
 
     {% for wh_data in stock_by_warehouse %}
     <div class="warehouse-section">

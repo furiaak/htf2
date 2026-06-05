@@ -14,13 +14,20 @@
     
     {% for item in stock_list %}
     <div class="stock-card" onclick="location.href='{{ url_for('movement_history', ingredient_id=item.ingredient.id) }}'">
-        <div class="stock-name">
-            {{ item.ingredient.name }}
-            {% if item.low_stock %}
-            <span class="warning-icon">⚠️</span>
-            {% endif %}
+        <div style="display: flex; justify-content: space-between; align-items: baseline;">
+            <div class="stock-name">
+                {{ item.ingredient.name }}
+                {% if item.is_below %}
+                <span class="warning-icon">⚠️</span>
+                {% endif %}
+            </div>
+            <div class="stock-qty" style="margin-top: 0;">{{ item.display_qty }}</div>
         </div>
-        <div class="stock-qty">{{ item.display_qty }}</div>
+        {% if item.is_below %}
+        <div style="margin-top: 8px; font-size: 12px; color: #D9534F;">
+            🔻 below limit of {{ item.min_display }}
+        </div>
+        {% endif %}
     </div>
     {% else %}
     <div class="stock-card" style="justify-content: center; color: #9AAE9A; cursor: default;">

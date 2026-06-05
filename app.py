@@ -1,6 +1,6 @@
 from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify
 from flask_sqlalchemy import SQLAlchemy
-from sqlalchemy import func
+from sqlalchemy import func, or_
 from datetime import datetime, date, timezone
 from werkzeug.security import generate_password_hash, check_password_hash
 import os
@@ -73,7 +73,13 @@ class StockSetting(db.Model):
     warehouse_id = db.Column(db.Integer, db.ForeignKey('warehouses.id'), nullable=False)
     ingredient_id = db.Column(db.Integer, db.ForeignKey('ingredients.id'), nullable=False)
     min_quantity_base = db.Column(db.Float, nullable=False)
+    unit_id = db.Column(db.Integer, db.ForeignKey('units.id'), nullable=False)   # NEW
     updated_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    # Relationships (optional)
+    warehouse = db.relationship('Warehouse')
+    ingredient = db.relationship('Ingredient')
+    unit = db.relationship('Unit')   # NEW
 
 class InventoryBalance(db.Model):
     __tablename__ = 'inventory_balance'
@@ -857,11 +863,9 @@ def current_stock():
     user_role = session['role']
     user_id = session['user_id']
     
-    # Admin sees all warehouses
+    # Admin sees all warehouses (keep as is)
     if user_role == 'ADMIN':
-        # Get all warehouses with their stock
         warehouses = Warehouse.query.order_by(Warehouse.name).all()
-        
         stock_by_warehouse = []
         for wh in warehouses:
             balances = db.session.query(
@@ -885,35 +889,70 @@ def current_stock():
                 'warehouse': wh,
                 'stock_list': stock_list
             })
-        
         return render_template('hq_stock.html', stock_by_warehouse=stock_by_warehouse)
     
-    # Regular users see their assigned warehouse
+    # Regular user
     warehouse_id = session['warehouse_id']
-    warehouse = Warehouse.query.get(warehouse_id)
+    warehouse = db.session.get(Warehouse, warehouse_id)
+    
+    from sqlalchemy import func, or_
     
     results = db.session.query(
-        InventoryBalance, Ingredient
-    ).join(
-        Ingredient, InventoryBalance.ingredient_id == Ingredient.id
+        Ingredient,
+        func.coalesce(InventoryBalance.balance_base, 0).label('balance_base'),
+        StockSetting.min_quantity_base,
+        StockSetting.unit_id,
+        Unit.alt_unit.label('limit_unit'),
+        Unit.conversion_to_base.label('limit_conversion')
+    ).outerjoin(
+        InventoryBalance,
+        (InventoryBalance.ingredient_id == Ingredient.id) &
+        (InventoryBalance.warehouse_id == warehouse_id)
+    ).outerjoin(
+        StockSetting,
+        (StockSetting.ingredient_id == Ingredient.id) &
+        (StockSetting.warehouse_id == warehouse_id)
+    ).outerjoin(
+        Unit, StockSetting.unit_id == Unit.id
     ).filter(
-        InventoryBalance.warehouse_id == warehouse_id
-    ).order_by(Ingredient.name.asc()).all()
+        Ingredient.is_approved == True,
+        or_(
+            InventoryBalance.balance_base > 0,
+            StockSetting.id.isnot(None)
+        )
+    ).order_by(Ingredient.name).all()
     
     stock_list = []
-    for balance, ingredient in results:
-        display_qty = format_quantity(balance.balance_base, ingredient)
+    low_stock_count = 0
+    
+    for ingredient, balance_base, min_base, limit_unit_id, limit_unit_alt, limit_conversion in results:
+        is_below = False
+        min_display = None
+        
+        if min_base is not None and limit_conversion and limit_conversion > 0:
+            # Convert min_base back to the stored unit (as an integer, rounding up)
+            limit_qty = min_base / limit_conversion
+            # Optionally round up to nearest integer for display
+            limit_qty_int = int(limit_qty) + (1 if limit_qty > int(limit_qty) else 0)
+            min_display = f"{limit_qty_int} {limit_unit_alt}"
+            if balance_base < min_base:
+                is_below = True
+                low_stock_count += 1
+        
+        display_qty = format_quantity(balance_base, ingredient)
+        
         stock_list.append({
             'ingredient': ingredient,
-            'balance_base': balance.balance_base,
+            'balance_base': balance_base,
             'display_qty': display_qty,
-            'low_stock': False
+            'is_below': is_below,
+            'min_display': min_display
         })
     
-    return render_template('current_stock.html', 
-                          stock_list=stock_list, 
+    return render_template('current_stock.html',
+                          stock_list=stock_list,
                           warehouse=warehouse,
-                          low_stock_count=0)
+                          low_stock_count=low_stock_count)
                           
 @app.route('/movement/history/<int:ingredient_id>')
 def movement_history(ingredient_id):
@@ -1482,6 +1521,145 @@ def reject_receipt(movement_id):
 
 
 # ========== ADMIN ROUTES ==========
+
+
+@app.route('/admin/stock_limits', methods=['GET', 'POST'])
+def admin_stock_limits():
+    if 'user_id' not in session or session['role'] != 'ADMIN':
+        flash('Admin access only')
+        return redirect(url_for('current_stock'))
+    
+    # Get all warehouses for dropdown
+    warehouses = Warehouse.query.order_by(Warehouse.name).all()
+    
+    # Selected warehouse (default to first if none)
+    selected_warehouse_id = request.args.get('warehouse_id', type=int)
+    if not selected_warehouse_id and warehouses:
+        selected_warehouse_id = warehouses[0].id
+    
+    selected_warehouse = Warehouse.query.get(selected_warehouse_id)
+    
+    if request.method == 'POST':
+        # Get warehouse_id from hidden input or URL
+        selected_warehouse_id = request.form.get('warehouse_id', type=int)
+        if not selected_warehouse_id:
+            selected_warehouse_id = request.args.get('warehouse_id', type=int)
+        
+        if not selected_warehouse_id:
+            flash('No warehouse selected')
+            return redirect(url_for('admin_stock_limits'))
+        
+        try:
+            # Process deletions first (so if both delete and limit are sent, delete wins)
+            for key in request.form:
+                if key.startswith('delete_'):
+                    ingredient_id = int(key.split('_')[1])
+                    # Delete the setting for this warehouse + ingredient
+                    StockSetting.query.filter_by(
+                        warehouse_id=selected_warehouse_id,
+                        ingredient_id=ingredient_id
+                    ).delete()
+            
+            # Process limit updates/inserts (skip if delete was also checked for that ingredient)
+            for key, value in request.form.items():
+                if key.startswith('limit_'):
+                    ingredient_id = int(key.split('_')[1])
+                    
+                    # If delete was checked for this ingredient, skip (already deleted)
+                    if f'delete_{ingredient_id}' in request.form:
+                        continue
+                    
+                    new_limit_str = value.strip()
+                    if not new_limit_str:
+                        continue
+                    
+                    try:
+                        new_limit = int(new_limit_str)
+                        if new_limit <= 0:
+                            continue
+                    except ValueError:
+                        continue
+                    
+                    unit_id = int(request.form.get(f'unit_{ingredient_id}'))
+                    unit = db.session.get(Unit, unit_id)
+                    if not unit:
+                        continue
+                    
+                    min_quantity_base = new_limit * unit.conversion_to_base
+                    
+                    setting = StockSetting.query.filter_by(
+                        warehouse_id=selected_warehouse_id,
+                        ingredient_id=ingredient_id
+                    ).first()
+                    
+                    if setting:
+                        setting.min_quantity_base = min_quantity_base
+                        setting.unit_id = unit_id
+                        setting.updated_at = datetime.utcnow()
+                    else:
+                        new_setting = StockSetting(
+                            warehouse_id=selected_warehouse_id,
+                            ingredient_id=ingredient_id,
+                            min_quantity_base=min_quantity_base,
+                            unit_id=unit_id
+                        )
+                        db.session.add(new_setting)
+            
+            db.session.commit()
+            flash('Stock limits updated successfully')
+            return redirect(url_for('admin_stock_limits', warehouse_id=selected_warehouse_id))
+        
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Error: {str(e)}')
+            return redirect(url_for('admin_stock_limits', warehouse_id=selected_warehouse_id))
+    
+    # GET: prepare table data
+    ingredients = Ingredient.query.filter_by(is_approved=True).order_by(Ingredient.name).all()
+    
+    rows = []
+    for ing in ingredients:
+        # Get current setting if exists
+        setting = StockSetting.query.filter_by(
+            warehouse_id=selected_warehouse_id,
+            ingredient_id=ing.id
+        ).first()
+        
+        # Determine unit choices (largest unit = highest rank)
+        units = sorted(ing.units, key=lambda u: u.rank, reverse=True)
+        default_unit = units[0] if units else None
+        
+        current_limit_display = "none"
+        current_limit_value = ""
+        current_unit_id = default_unit.id if default_unit else None
+        
+        if setting:
+            # Convert stored base quantity back to the stored unit
+            unit = Unit.query.get(setting.unit_id)
+            if unit and unit.conversion_to_base > 0:
+                display_qty = int(setting.min_quantity_base / unit.conversion_to_base)
+                current_limit_display = f"{display_qty} {unit.alt_unit}"
+                current_limit_value = display_qty
+                current_unit_id = setting.unit_id
+            else:
+                current_limit_display = "error"
+        
+        rows.append({
+            'ingredient_id': ing.id,
+            'ingredient_name': ing.name,
+            'setting_id': setting.id if setting else None,
+            'current_limit_display': current_limit_display,
+            'current_limit_value': current_limit_value,
+            'current_unit_id': current_unit_id,
+            'units': units,  # list of Unit objects
+            'has_setting': setting is not None
+        })
+    
+    return render_template('admin_stock_limits.html',
+                           warehouses=warehouses,
+                           selected_warehouse_id=selected_warehouse_id,
+                           selected_warehouse=selected_warehouse,
+                           rows=rows)
 
 @app.route('/admin/ingredients')
 def admin_ingredients():

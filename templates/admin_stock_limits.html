@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+
+{% block header_subtitle %}
+<div class="subtitle">Set minimum stock alerts</div>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <!-- Flash messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            <div style="margin-bottom: 20px;">
+                {% for category, message in messages %}
+                    <div class="flash {% if category %}flash-{{ category }}{% else %}flash{% endif %}">
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+    {% endwith %}
+
+    <!-- Store selector card (matches item-table style) -->
+    <div style="background: white; border-radius: 16px; padding: 16px; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+        <form method="GET" action="{{ url_for('admin_stock_limits') }}" style="display: flex; gap: 12px; align-items: flex-end; flex-wrap: wrap;">
+            <div style="flex: 1; min-width: 180px;">
+                <label for="warehouse_id" style="margin-bottom: 4px; font-size: 13px; font-weight: 500; color: #3E5A3A;">Store</label>
+                <select name="warehouse_id" id="warehouse_id" onchange="this.form.submit()" style="background: white; border: 1px solid #D1D8D1; border-radius: 12px; padding: 10px; width: 100%;">
+                    {% for wh in warehouses %}
+                        <option value="{{ wh.id }}" {% if wh.id == selected_warehouse_id %}selected{% endif %}>
+                            {{ wh.name }} ({{ wh.store_code }})
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+        </form>
+    </div>
+
+    <!-- Limits table – styled exactly like item-table macro -->
+    <div style="background: white; border-radius: 16px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.05); margin-bottom: 20px;">
+        <form method="POST" action="{{ url_for('admin_stock_limits', warehouse_id=selected_warehouse_id) }}">
+            <input type="hidden" name="warehouse_id" value="{{ selected_warehouse_id }}">
+            
+            <!-- Header row (matching .item-table-header) -->
+            <div style="display: grid; grid-template-columns: 1fr 100px 100px 100px 60px; gap: 8px; padding: 12px 16px; background: #F7FAF5; font-weight: 600; font-size: 13px; color: #3E5A3A; border-bottom: 1px solid #D6E0D6;">
+                <div>Ingredient</div>
+                <div>Current Limit</div>
+                <div>New Limit</div>
+                <div>Unit</div>
+                <div style="text-align: center;">Delete</div>
+            </div>
+
+            <!-- Rows -->
+            <div style="background: white;">
+                {% for row in rows %}
+                <div style="display: grid; grid-template-columns: 1fr 100px 100px 100px 60px; gap: 8px; padding: 12px 16px; border-bottom: 1px solid #E6EDE6; align-items: center; transition: background 0.1s;" onmouseover="this.style.backgroundColor='#F9FCF7'" onmouseout="this.style.backgroundColor='white'">
+                    <div style="font-size: 14px; font-weight: 500; color: #2E3B2B;">{{ row.ingredient_name }}</div>
+                    <div style="font-size: 13px; color: {% if row.has_setting %}#2E6B2E{% else %}#9AAE9A{% endif %};">
+                        {% if row.has_setting %}
+                            {{ row.current_limit_display }}
+                        {% else %}
+                            <span style="font-style: italic;">none</span>
+                        {% endif %}
+                    </div>
+                    <div>
+                        <input type="number" name="limit_{{ row.ingredient_id }}" 
+                               value="{{ row.current_limit_value if row.current_limit_value else '' }}"
+                               min="1" step="1" 
+                               style="width: 100%; padding: 8px; font-size: 14px; border: 1px solid #D1D8D1; border-radius: 10px; background: white; text-align: right;">
+                    </div>
+                    <div>
+                        <select name="unit_{{ row.ingredient_id }}" style="width: 100%; padding: 8px; font-size: 14px; border: 1px solid #D1D8D1; border-radius: 10px; background: white;">
+                            {% for unit in row.units %}
+                                <option value="{{ unit.id }}" {% if row.current_unit_id == unit.id %}selected{% endif %}>
+                                    {{ unit.alt_unit }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div style="text-align: center;">
+                        {% if row.has_setting %}
+                            <input type="checkbox" name="delete_{{ row.ingredient_id }}" value="1" style="width: 18px; height: 18px; cursor: pointer;">
+                        {% else %}
+                            <span style="color: #CCD6CC;">—</span>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+
+            <!-- Save button area (matches .add-item-link style) -->
+            <div style="padding: 16px; text-align: center; border-top: 1px solid #E6EDE6; background: #FEFEFC;">
+                <button type="submit" style="background: #7C9F6E; color: white; border: none; border-radius: 40px; padding: 10px 32px; font-size: 14px; font-weight: 600; cursor: pointer;">💾 Save All Changes</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

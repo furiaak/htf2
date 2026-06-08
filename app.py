@@ -161,6 +161,7 @@ def get_default_unit(ingredient, direction, movement_type=None):
         else:
             return max(units, key=lambda u: u.rank)  # highest (carton)
 
+
 def format_quantity(base_quantity, ingredient):
     if not ingredient.units:
         return f"{base_quantity} units"
@@ -170,7 +171,17 @@ def format_quantity(base_quantity, ingredient):
     for unit in units_sorted:
         if unit.rank == 1:
             if remaining > 0 or not result:
-                result.append(f"{int(remaining)} {unit.alt_unit}")
+                # Check if base unit is grams
+                unit_name = unit.alt_unit.lower()
+                if unit_name in ['g', 'gr', 'gram', 'grams'] and remaining >= 1000:
+                    kg = int(remaining // 1000)
+                    g = int(remaining % 1000)
+                    if g == 0:
+                        result.append(f"{kg}kg")
+                    else:
+                        result.append(f"{kg}kg {g}g")
+                else:
+                    result.append(f"{int(remaining)} {unit.alt_unit}")
             break
         else:
             unit_value = unit.conversion_to_base
@@ -179,6 +190,8 @@ def format_quantity(base_quantity, ingredient):
                 result.append(f"{count} {unit.alt_unit}")
                 remaining = remaining % unit_value
     return ', '.join(result)
+
+
 
 def get_low_stock(warehouse_id):
     results = db.session.query(
@@ -573,7 +586,16 @@ def create_request(type):
                 
                 ingredient_id = int(key.split('_')[1])
                 unit_id = int(request.form[f'unit_{ingredient_id}'])
-                
+
+                unit = Unit.query.get(unit_id)
+                if unit:
+                    unit_alt = unit.alt_unit.lower()
+                    if unit_alt in ['g', 'gr', 'gram', 'grams'] and quantity < 100:
+                        ingredient = Ingredient.query.get(ingredient_id)
+                        flash(f'Jika menggunakan satuan gram, jumlah minimal 100 gram untuk {ingredient.name if ingredient else "item"} (Anda input {int(quantity)} gram).')
+                        has_error = True
+                        break 
+ 
                 # For outgoing: check if source has enough stock
                 if type == 'outgoing':
                     balance = InventoryBalance.query.filter_by(
@@ -1139,11 +1161,7 @@ def add_movement():
         fake_ing = FakeIngredient(ing.units)
         default_unit = get_default_unit(fake_ing, direction, movement_type)
 
-        print(f"DEBUG: Ingredient: {ing.name}")
-        print(f"DEBUG: Units: {[(u.alt_unit, u.rank) for u in ing.units]}")
-        print(f"DEBUG: Direction: {direction}, Movement type: {movement_type}")
-        print(f"DEBUG: Default unit: {default_unit.alt_unit if default_unit else None}")
-        print("---")  
+
 
   
         ingredient_data.append({

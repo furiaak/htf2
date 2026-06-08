@@ -357,16 +357,23 @@
 
     <!-- Bottom navigation (if logged in) -->
     {% if session.user_id %}
-    <div class="bottom-nav">
-        <a href="{{ url_for('current_stock') }}" class="nav-item {% if request.endpoint == 'current_stock' %}active{% endif %}">📊 Stok</a>
-        <a href="{{ url_for('request_type') }}" class="nav-item {% if request.endpoint == 'request_type' %}active{% endif %}">📝 Minta</a>
-        <a href="{{ url_for('pending_move_requests') }}" class="nav-item {% if request.endpoint == 'pending_move_requests' %}active{% endif %}">📤 OUT</a>
-        <a href="{{ url_for('pending_receipts') }}" class="nav-item {% if request.endpoint == 'pending_receipts' %}active{% endif %}">📥 IN</a>
-        <a href="{{ url_for('add_movement') }}" class="nav-item {% if request.endpoint == 'add_movement' %}active{% endif %}">➕ Add</a>      
-        {% if session.role == 'ADMIN' %}
-        <a href="{{ url_for('admin_ingredients') }}" class="nav-item {% if request.endpoint == 'admin_ingredients' %}active{% endif %}">⚙️ Admin</a>
-        {% endif %}
-    </div>
+	<div class="bottom-nav">
+		<!-- Stok is always visible -->
+		<a href="{{ url_for('current_stock') }}" class="nav-item {% if request.endpoint == 'current_stock' %}active{% endif %}">📊 Stok</a>
+		
+		{% if session.role != 'ADMIN' %}
+		<!-- Non‑admin users see these -->
+		<a href="{{ url_for('request_type') }}" class="nav-item {% if request.endpoint == 'request_type' %}active{% endif %}">📝 Minta</a>
+		<a href="{{ url_for('pending_move_requests') }}" class="nav-item {% if request.endpoint == 'pending_move_requests' %}active{% endif %}">📤 OUT</a>
+		<a href="{{ url_for('pending_receipts') }}" class="nav-item {% if request.endpoint == 'pending_receipts' %}active{% endif %}">📥 IN</a>
+		<a href="{{ url_for('add_movement') }}" class="nav-item {% if request.endpoint == 'add_movement' %}active{% endif %}">➕ Add</a>
+		{% endif %}
+		
+		{% if session.role == 'ADMIN' %}
+		<!-- Admin only sees this extra link -->
+		<a href="{{ url_for('admin_ingredients') }}" class="nav-item {% if request.endpoint == 'admin_ingredients' %}active{% endif %}">⚙️ Admin</a>
+		{% endif %}
+	</div>
     {% endif %}
 
     <script>

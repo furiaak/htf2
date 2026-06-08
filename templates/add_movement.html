@@ -76,6 +76,7 @@
 const dirIn = document.getElementById('dir_in');
 const dirOut = document.getElementById('dir_out');
 
+
 function updateMovementType() {
     const movement_type = document.getElementById('movement_type').value;
     const direction = dirIn.checked ? 'IN' : 'OUT';
@@ -90,6 +91,7 @@ function updateDirection() {
 
 dirIn.addEventListener('change', updateDirection);
 dirOut.addEventListener('change', updateDirection);
+document.getElementById('movement_type').addEventListener('change', updateDirection);
 
 // Preserve selection after reload
 const urlParams = new URLSearchParams(window.location.search);

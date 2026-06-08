@@ -752,7 +752,7 @@ def create_request(type):
                         'rank': unit.rank,
                         'conversion_to_base': unit.conversion_to_base
                     })
-                default_unit = max(units, key=lambda u: u['rank']) if units else None
+                default_unit = min(units, key=lambda u: u['rank']) if units else None
                 ingredients_data.append({
                     'id': ing.id,
                     'name': ing.name,

@@ -1194,21 +1194,25 @@ def warehouse_history():
     ).order_by(Movement.date.desc(), Movement.created_at.desc()).all()
     
     # Separate: those with move_request_id vs direct
-    grouped = {}  # key = request_id (int) or 'direct_{id}'
+    grouped = {}  # key = request_id
     direct_entries = []
     
     for mov in movements:
         if mov.move_request_id:
             req_id = mov.move_request_id
             if req_id not in grouped:
-                # Determine direction from first movement in group (all should be same)
+                # Determine direction from first movement in group
                 direction = mov.direction
                 # Get request details
                 move_req = db.session.get(MoveRequest, req_id)
                 if move_req:
                     other_warehouse = move_req.to_warehouse if mov.direction == 'OUT' else move_req.from_warehouse
                     other_name = other_warehouse.name if other_warehouse else 'Unknown'
-                    label = f"Outgoing Fulfillment (Req #{req_id})" if mov.direction == 'OUT' else f"Incoming Receipt (Req #{req_id})"
+                    movement_type_display = move_req.movement_type.capitalize() if move_req.movement_type else 'Transfer'
+                    if mov.direction == 'OUT':
+                        label = f"Outgoing {movement_type_display} Fulfillment (Req #{req_id})"
+                    else:
+                        label = f"Incoming {movement_type_display} Receipt (Req #{req_id})"
                 else:
                     other_name = ''
                     label = f"Movement (Req #{req_id})"
@@ -1240,12 +1244,7 @@ def warehouse_history():
                 'note': mov.note or ''
             })
     
-    # Convert grouped dict to list for template
     grouped_entries = list(grouped.values())
-    
-    # Combine both types (already sorted by date because movements were sorted, but group date may differ)
-    # For simplicity, we'll keep grouped and direct separate in template, but we can interleave later if needed.
-    # We'll send both lists and let template decide display order.
     
     return render_template('warehouse_history.html',
                           warehouse=warehouse,

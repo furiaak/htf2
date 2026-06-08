@@ -1179,6 +1179,79 @@ def add_movement():
                           direction=direction,
                           movement_type=movement_type)
 
+@app.route('/warehouse/history')
+def warehouse_history():
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+    
+    warehouse_id = session['warehouse_id']
+    warehouse = db.session.get(Warehouse, warehouse_id)
+    
+    # Get all completed movements for this warehouse
+    movements = Movement.query.filter(
+        Movement.warehouse_id == warehouse_id,
+        Movement.status == 'completed'
+    ).order_by(Movement.date.desc(), Movement.created_at.desc()).all()
+    
+    # Separate: those with move_request_id vs direct
+    grouped = {}  # key = request_id (int) or 'direct_{id}'
+    direct_entries = []
+    
+    for mov in movements:
+        if mov.move_request_id:
+            req_id = mov.move_request_id
+            if req_id not in grouped:
+                # Determine direction from first movement in group (all should be same)
+                direction = mov.direction
+                # Get request details
+                move_req = db.session.get(MoveRequest, req_id)
+                if move_req:
+                    other_warehouse = move_req.to_warehouse if mov.direction == 'OUT' else move_req.from_warehouse
+                    other_name = other_warehouse.name if other_warehouse else 'Unknown'
+                    label = f"Outgoing Fulfillment (Req #{req_id})" if mov.direction == 'OUT' else f"Incoming Receipt (Req #{req_id})"
+                else:
+                    other_name = ''
+                    label = f"Movement (Req #{req_id})"
+                
+                grouped[req_id] = {
+                    'request_id': req_id,
+                    'direction': direction,
+                    'date': mov.date,
+                    'label': label,
+                    'other_warehouse': other_name,
+                    'note': move_req.note if move_req else '',
+                    'items': []
+                }
+            grouped[req_id]['items'].append({
+                'ingredient_name': mov.ingredient.name,
+                'quantity': int(mov.quantity) if mov.quantity.is_integer() else mov.quantity,
+                'unit_alt': mov.unit.alt_unit
+            })
+        else:
+            # Direct movement – single item
+            direct_entries.append({
+                'date': mov.date,
+                'label': f"Direct {mov.direction} – {mov.movement_type.capitalize()}",
+                'direction': mov.direction,
+                'ingredient_name': mov.ingredient.name,
+                'quantity': int(mov.quantity) if mov.quantity.is_integer() else mov.quantity,
+                'unit_alt': mov.unit.alt_unit,
+                'origin_destination': mov.origin_destination or '-',
+                'note': mov.note or ''
+            })
+    
+    # Convert grouped dict to list for template
+    grouped_entries = list(grouped.values())
+    
+    # Combine both types (already sorted by date because movements were sorted, but group date may differ)
+    # For simplicity, we'll keep grouped and direct separate in template, but we can interleave later if needed.
+    # We'll send both lists and let template decide display order.
+    
+    return render_template('warehouse_history.html',
+                          warehouse=warehouse,
+                          grouped_entries=grouped_entries,
+                          direct_entries=direct_entries)
+
 @app.route('/move_requests/my')
 def my_move_requests():
     if 'user_id' not in session:
@@ -1188,7 +1261,8 @@ def my_move_requests():
     
     # Get all move requests created by this user
     my_requests = MoveRequest.query.filter_by(
-        requested_by_user_id=user_id
+        requested_by_user_id=user_id,
+        status='PENDING'
     ).order_by(MoveRequest.request_date.desc(), MoveRequest.id.desc()).all()
     
     # For each request, enrich items with actual received quantity from movements

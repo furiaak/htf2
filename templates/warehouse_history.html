@@ -1,0 +1,107 @@
+{% extends "base.html" %}
+
+{% block header_subtitle %}
+<div class="subtitle">Complete history for {{ warehouse.name }}</div>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    {% with messages = get_flashed_messages() %}
+        {% if messages %}
+            {% for message in messages %}
+                <div class="flash">{{ message }}</div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <h2 style="margin-bottom: 20px; font-size: 20px; font-weight: 600; color: #3E5A3A;">Warehouse History</h2>
+
+    {# Combined list of entries – we'll manually merge grouped and direct for chronological order #}
+    {% set all_entries = [] %}
+    {% for group in grouped_entries %}
+        {% set _ = all_entries.append({
+            'date': group.date,
+            'type': 'group',
+            'data': group
+        }) %}
+    {% endfor %}
+    {% for direct in direct_entries %}
+        {% set _ = all_entries.append({
+            'date': direct.date,
+            'type': 'direct',
+            'data': direct
+        }) %}
+    {% endfor %}
+    {% set all_entries = all_entries|sort(attribute='date', reverse=True) %}
+
+    {% if all_entries %}
+        {% for entry in all_entries %}
+            {% if entry.type == 'group' %}
+                {% set group = entry.data %}
+                <div class="stock-card" style="cursor: default; padding: 16px;">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                        <span style="font-weight: 600; color: #7C9F6E;">
+                            {{ group.label }}
+                        </span>
+                        <span style="color: #6B7F6B; font-size: 12px;">{{ group.date.strftime('%Y-%m-%d') }}</span>
+                    </div>
+                    {% if group.other_warehouse %}
+                    <div style="font-size: 12px; color: #5E6E5E; margin-bottom: 8px;">
+                        {{ 'To' if group.direction == 'OUT' else 'From' }}: {{ group.other_warehouse }}
+                    </div>
+                    {% endif %}
+                    <div style="background: #F7FAF5; padding: 8px; border-radius: 12px; margin-top: 4px; font-size: 13px;">
+                        {% for item in group['items'] %}
+                        <div style="padding: 4px 0;">
+                            {{ item.ingredient_name }}: 
+                            {{ item.quantity }} {{ item.unit_alt }}
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% if group.note %}
+                    <div style="font-size: 12px; color: #7A8F7A; margin-top: 8px; font-style: italic;">
+                        Note: {{ group.note }}
+                    </div>
+                    {% endif %}
+                </div>
+            {% else %}
+                {% set direct = entry.data %}
+                <div class="stock-card" style="cursor: default; padding: 16px;">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                        <span style="font-weight: 600; color: #7C9F6E;">
+                            {{ direct.label }}
+                        </span>
+                        <span style="color: #6B7F6B; font-size: 12px;">{{ direct.date.strftime('%Y-%m-%d') }}</span>
+                    </div>
+                    <div style="font-size: 14px; margin-bottom: 8px;">
+                        <span style="color: #2E3B2B;">{{ direct.ingredient_name }}</span>
+                        <span style="font-weight: 500; margin-left: 8px;">
+                            {{ direct.quantity }} {{ direct.unit_alt }}
+                        </span>
+                        {% if direct.direction == 'OUT' %}
+                        <span style="color: #D9534F; margin-left: 8px;">(OUT)</span>
+                        {% else %}
+                        <span style="color: #7C9F6E; margin-left: 8px;">(IN)</span>
+                        {% endif %}
+                    </div>
+                    {% if direct.origin_destination != '-' %}
+                    <div style="font-size: 12px; color: #5E6E5E; margin-top: 4px;">
+                        {{ 'From' if direct.direction == 'IN' else 'To' }}: {{ direct.origin_destination }}
+                    </div>
+                    {% endif %}
+                    {% if direct.note %}
+                    <div style="font-size: 12px; color: #7A8F7A; margin-top: 6px; font-style: italic;">
+                        Note: {{ direct.note }}
+                    </div>
+                    {% endif %}
+                </div>
+            {% endif %}
+        {% endfor %}
+    {% else %}
+        <div class="stock-card" style="text-align: center; cursor: default;">
+            <div class="stock-name" style="justify-content: center;">📜</div>
+            <div class="stock-qty">No completed movements found for this warehouse</div>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

@@ -1788,6 +1788,89 @@ def admin_delete_ingredient(ingredient_id):
     return jsonify({'success': True, 'message': 'Deleted'})
 
 
+@app.route('/admin/ingredient/data/<int:ingredient_id>')
+def admin_ingredient_data(ingredient_id):
+    if 'user_id' not in session or session['role'] != 'ADMIN':
+        return jsonify({'success': False, 'message': 'Unauthorized'}), 403
+    
+    ingredient = db.session.get(Ingredient, ingredient_id)
+    if not ingredient:
+        return jsonify({'success': False, 'message': 'Ingredient not found'}), 404
+    
+    units = []
+    for unit in ingredient.units:
+        units.append({
+            'id': unit.id,
+            'alt_unit': unit.alt_unit,
+            'conversion_to_base': unit.conversion_to_base,
+            'is_base': (unit.id == ingredient.base_unit_id)
+        })
+    
+    return jsonify({
+        'success': True,
+        'ingredient_id': ingredient.id,
+        'name': ingredient.name,
+        'base_unit_id': ingredient.base_unit_id,
+        'units': units
+    })
+
+
+@app.route('/admin/ingredient/update', methods=['POST'])
+def admin_ingredient_update():
+    if 'user_id' not in session or session['role'] != 'ADMIN':
+        return jsonify({'success': False, 'message': 'Unauthorized'}), 403
+    
+    data = request.get_json()
+    if not data:
+        return jsonify({'success': False, 'message': 'Invalid data'}), 400
+    
+    ingredient_id = int(data.get('ingredient_id'))
+    new_name = data.get('name', '').strip()
+    units_data = data.get('units', [])
+    
+    if not ingredient_id or not new_name:
+        return jsonify({'success': False, 'message': 'Missing name or ID'}), 400
+    
+    ingredient = db.session.get(Ingredient, ingredient_id)
+    if not ingredient:
+        return jsonify({'success': False, 'message': 'Ingredient not found'}), 404
+    
+    existing = Ingredient.query.filter(Ingredient.name == new_name, Ingredient.id != ingredient_id).first()
+    if existing:
+        return jsonify({'success': False, 'message': 'Ingredient name already exists'}), 400
+    
+    ingredient.name = new_name
+    
+    for unit_info in units_data:
+        unit_id = int(unit_info.get('id'))
+        alt_unit = unit_info.get('alt_unit', '').strip()
+        conversion = unit_info.get('conversion')
+        
+        if not unit_id or not alt_unit:
+            continue
+        
+        unit = db.session.get(Unit, unit_id)
+        if not unit or unit.ingredient_id != ingredient_id:
+            continue
+        
+        unit.alt_unit = alt_unit[:10]
+        
+        if unit.id != ingredient.base_unit_id:
+            try:
+                conv = float(conversion)
+                if conv > 0:
+                    unit.conversion_to_base = conv
+            except (TypeError, ValueError):
+                pass
+        else:
+            unit.conversion_to_base = 1
+    
+    try:
+        db.session.commit()
+        return jsonify({'success': True, 'message': f'Ingredient "{new_name}" updated successfully'})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': f'Database error: {str(e)}'}), 500
 
 import os
 

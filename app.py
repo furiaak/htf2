@@ -980,14 +980,26 @@ def current_stock():
 def movement_history(ingredient_id):
     if 'user_id' not in session:
         return redirect(url_for('login'))
-    warehouse_id = session['warehouse_id']
+    
     ingredient = Ingredient.query.get_or_404(ingredient_id)
+    
+    # Use provided warehouse_id or fallback to session
+    warehouse_id = request.args.get('warehouse_id', type=int)
+    if not warehouse_id:
+        warehouse_id = session['warehouse_id']
+    
     movements = Movement.query.filter(
         Movement.warehouse_id == warehouse_id,
         Movement.ingredient_id == ingredient_id,
-        Movement.status == 'completed'  # Only show completed movements
+        Movement.status == 'completed'
     ).order_by(Movement.date.desc(), Movement.created_at.desc()).all()
-    return render_template('movement_history.html', movements=movements, ingredient=ingredient)
+    
+    back_url = request.args.get('back', url_for('current_stock'))
+    
+    return render_template('movement_history.html',
+                           movements=movements,
+                           ingredient=ingredient,
+                           back_url=back_url)
 
 @app.route('/add_movement', methods=['GET', 'POST'])
 def add_movement():

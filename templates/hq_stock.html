@@ -19,7 +19,12 @@
             <div class="stock-list">
                 {% for item in wh_data.stock_list %}
                 <div class="stock-row">
-                    <span class="stock-name">{{ item.ingredient.name }}</span>
+					<span class="stock-name">
+						<a href="{{ url_for('movement_history', ingredient_id=item.ingredient.id, warehouse_id=wh_data.warehouse.id, back=url_for('current_stock')) }}" 
+						   style="color: #3E5A3A; text-decoration: none; font-weight: 500;">
+							{{ item.ingredient.name }}
+						</a>
+					</span>
                     <span class="stock-qty">{{ item.display_qty }}</span>
                 </div>
                 {% endfor %}
